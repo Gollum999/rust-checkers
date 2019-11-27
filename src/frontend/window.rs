@@ -1,7 +1,7 @@
 extern crate pancurses;
 
 use super::super::backend;
-use backend::{Board, Piece, Team};
+use backend::{Board, Piece, PieceType, Team};
 
 use pancurses::{
     ACS_HLINE, ACS_VLINE,
@@ -56,6 +56,10 @@ macro_rules! log {
     };
 }
 
+const BOARD_SIZE: i32 = 8;
+const SQUARE_WIDTH: usize = 3;
+const COLOR_SCHEME: ColorScheme = ColorScheme::RedBlack;
+
 pub struct Window<'a> {
     main_window: pancurses::Window,
     board_window: pancurses::Window,
@@ -66,7 +70,7 @@ pub struct Window<'a> {
 impl<'a> Window<'a> {
     pub fn new(board: &'a Board) -> Result<Window, WindowError> {
         let main_window = initscr();
-        let sub_window = main_window.subwin(10, 30, 1, 1)?;
+        let sub_window = main_window.subwin(2 + BOARD_SIZE, 2 + BOARD_SIZE * SQUARE_WIDTH as i32, 1, 1)?;
         let w = Window {
             main_window: main_window,
             board_window: sub_window,
@@ -89,12 +93,12 @@ impl<'a> Window<'a> {
         Ok(w)
     }
 
-    fn get_piece_char(team: &Team, piece: &Piece) -> char {
-        match (team, piece) {
-            (Team::White, Piece::Man)  => '⛀',
-            (Team::Black, Piece::Man)  => '⛂',
-            (Team::White, Piece::King) => '⛁',
-            (Team::Black, Piece::King) => '⛃',
+    fn get_piece_char(piece: &Piece) -> char {
+        match (piece.team, piece.piece_type) {
+            (Team::White, PieceType::Man)  => '⛀',
+            (Team::Black, PieceType::Man)  => '⛂',
+            (Team::White, PieceType::King) => '⛁',
+            (Team::Black, PieceType::King) => '⛃',
         }
     }
 
@@ -103,22 +107,21 @@ impl<'a> Window<'a> {
         for (y, row) in self.board.value().iter().enumerate() {
             for (x, cell) in row.iter().enumerate() {
                 let c = match cell {
-                    Some(piece) => Self::get_piece_char(&Team::White, piece),
+                    Some(piece) => Self::get_piece_char(piece),
                     None => ' ',
                 };
-                // TODO any way to clean this up?
-                const COLOR_SCHEME: ColorScheme = ColorScheme::RedBlack;
                 let colors = match COLOR_SCHEME {
                     ColorScheme::WhiteRed   => [Color::WhiteOnRed as i16,   Color::RedOnWhite as i16],
                     ColorScheme::RedBlack   => [Color::RedOnBlack as i16,   Color::BlackOnRed as i16],
                     ColorScheme::WhiteBlack => [Color::WhiteOnBlack as i16, Color::BlackOnWhite as i16],
                 };
                 self.board_window.color_set(colors[(x + y + 1) % 2]);
+                // TODO any way to clean this up?
                 use std::convert::TryInto;
                 self.board_window.mvaddstr(
                     (y + 1).try_into().unwrap(),
-                    (x * 3 + 1).try_into().unwrap(),
-                    format!(" {} ", c),
+                    (x * SQUARE_WIDTH + 1).try_into().unwrap(),
+                    format!("{char:^width$}", char=c, width=SQUARE_WIDTH),
                 );
                 // self.board_window.mvaddch(col_idx, row_idx, c)
             }

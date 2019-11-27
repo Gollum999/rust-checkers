@@ -1,13 +1,20 @@
 //○●◯◖◗⬤⭗⭕⭘🔴🔵
 //♛♕♔♚👑
 //⛀⛂⛁⛃
+#[derive(Copy, Clone)]
 pub enum Team {
     White,
     Black,
 }
-pub enum Piece {
+#[derive(Copy, Clone)]
+pub enum PieceType {
     Man,
     King,
+}
+#[derive(Copy, Clone)]
+pub struct Piece {
+    pub team: Team,
+    pub piece_type: PieceType,
 }
 
 type _Row = [Option<Piece>; 8];
@@ -17,17 +24,18 @@ pub struct Board(_Board);
 
 impl Board {
     pub fn new() -> Board {
-        use Piece::*;
+        use Team::*;
+        let p = |team| Some(Piece{ team: team, piece_type: PieceType::Man });
         Board(
             [
-                [None, None, None, None, None, None, None, None],
-                [None, None, None, None, None, None, None, None],
-                [None, None, None, None, None, None, None, None],
-                [None, None, None, None, None, None, None, None],
-                [None, None, None, None, None, None, None, None],
-                [None, None, None, None, None, None, None, None],
-                [None, None, None, None, None, None, None, None],
-                [None, None, None, None, None, None, Some(Man), None],
+                [    None, p(Black),     None, p(Black),     None, p(Black),     None, p(Black)],
+                [p(Black),     None, p(Black),     None, p(Black),     None, p(Black),     None],
+                [    None, p(Black),     None, p(Black),     None, p(Black),     None, p(Black)],
+                [    None,     None,     None,     None,     None,     None,     None,     None],
+                [    None,     None,     None,     None,     None,     None,     None,     None],
+                [p(White),     None, p(White),     None, p(White),     None, p(White),     None],
+                [    None, p(White),     None, p(White),     None, p(White),     None, p(White)],
+                [p(White),     None, p(White),     None, p(White),     None, p(White),     None],
             ]
         )
     }
