@@ -3,7 +3,8 @@ mod backend;
 
 fn main() {
     let game = backend::Game::new();
-    game.start();
+    let window = frontend::Window::new(game.get_board()).unwrap();
 
-    let window = frontend::window::Window::new(game.get_board());
+    game.start();
+    window.run();
 }
