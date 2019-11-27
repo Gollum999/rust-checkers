@@ -1,9 +1,15 @@
 //○●◯◖◗⬤⭗⭕⭘🔴🔵
 //♛♕♔♚👑
-pub enum Piece {
-    MAN,
-    KING,
+//⛀⛂⛁⛃
+pub enum Team {
+    White,
+    Black,
 }
+pub enum Piece {
+    Man,
+    King,
+}
+
 type _Row = [Option<Piece>; 8];
 type _Board = [_Row; 8];
 pub struct Board(_Board);
@@ -21,7 +27,7 @@ impl Board {
                 [None, None, None, None, None, None, None, None],
                 [None, None, None, None, None, None, None, None],
                 [None, None, None, None, None, None, None, None],
-                [None, None, None, None, None, None, Some(MAN), None],
+                [None, None, None, None, None, None, Some(Man), None],
             ]
         )
     }
