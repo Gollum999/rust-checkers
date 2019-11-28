@@ -19,7 +19,7 @@ impl From<i32> for WindowError {
     fn from(code: i32) -> Self {
         WindowError {
             code: code,
-            message: format!("Error code {}", code),
+            message: format!("Error code {}", code), // TODO prettify common error codes
         }
     }
 }
@@ -56,7 +56,6 @@ macro_rules! log {
     };
 }
 
-const BOARD_SIZE: i32 = 8;
 const SQUARE_WIDTH: usize = 3;
 const COLOR_SCHEME: ColorScheme = ColorScheme::RedBlack;
 
@@ -70,7 +69,7 @@ pub struct Window<'a> {
 impl<'a> Window<'a> {
     pub fn new(board: &'a Board) -> Result<Window, WindowError> {
         let main_window = initscr();
-        let sub_window = main_window.subwin(2 + BOARD_SIZE, 2 + BOARD_SIZE * SQUARE_WIDTH as i32, 1, 1)?;
+        let sub_window = main_window.subwin(2 + Board::SIZE, 2 + Board::SIZE * SQUARE_WIDTH as i32, 1, 1)?;
         let w = Window {
             main_window: main_window,
             board_window: sub_window,
@@ -116,14 +115,11 @@ impl<'a> Window<'a> {
                     ColorScheme::WhiteBlack => [Color::WhiteOnBlack as i16, Color::BlackOnWhite as i16],
                 };
                 self.board_window.color_set(colors[(x + y + 1) % 2]);
-                // TODO any way to clean this up?
-                use std::convert::TryInto;
                 self.board_window.mvaddstr(
-                    (y + 1).try_into().unwrap(),
-                    (x * SQUARE_WIDTH + 1).try_into().unwrap(),
+                    (y + 1) as i32,
+                    (x * SQUARE_WIDTH + 1) as i32,
                     format!("{char:^width$}", char=c, width=SQUARE_WIDTH),
                 );
-                // self.board_window.mvaddch(col_idx, row_idx, c)
             }
         }
     }
@@ -137,11 +133,9 @@ impl<'a> Window<'a> {
             self.main_window.refresh();
 
             match self.main_window.getch() {
-                // Some(Input::Character(c)) => { self.main_window.addch(c); },
                 Some(Input::Character('q')) => break,
                 Some(Input::KeyDC) => break,
                 Some(_) => (),
-                // Some(input) => { self.main_window.addstr(&format!("{:?}", input)); },
                 None => ()
             }
         }

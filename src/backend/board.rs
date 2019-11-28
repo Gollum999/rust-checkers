@@ -1,6 +1,3 @@
-//○●◯◖◗⬤⭗⭕⭘🔴🔵
-//♛♕♔♚👑
-//⛀⛂⛁⛃
 #[derive(Copy, Clone)]
 pub enum Team {
     White,
@@ -23,6 +20,7 @@ pub struct Board(_Board);
 // pub type Board = _Board;
 
 impl Board {
+    pub const SIZE: i32 = 8;
     pub fn new() -> Board {
         use Team::*;
         let p = |team| Some(Piece{ team: team, piece_type: PieceType::Man });

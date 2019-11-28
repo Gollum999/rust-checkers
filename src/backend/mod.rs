@@ -1,5 +1,7 @@
+mod ai;
 mod board;
 mod game;
+mod player;
 
 pub use board::Board;
 pub use board::PieceType;

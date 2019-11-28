@@ -1,3 +1,3 @@
-struct Ai {
+pub struct Ai {
 
 }
