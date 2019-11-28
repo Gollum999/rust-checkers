@@ -1,7 +1,8 @@
 extern crate pancurses;
 
 use super::super::backend;
-use backend::{Board, Piece, PieceType, Team};
+use super::super::channel; // TODO any way to clean this up?
+use backend::{Board, Piece, PieceType, Team}; // TODO this is a bit messy too
 
 use pancurses::{
     ACS_HLINE, ACS_VLINE,
@@ -59,21 +60,23 @@ macro_rules! log {
 const SQUARE_WIDTH: usize = 3;
 const COLOR_SCHEME: ColorScheme = ColorScheme::RedBlack;
 
-pub struct Window<'a> {
+pub struct Window {
+    backend_channel: channel::Endpoint,
     main_window: pancurses::Window,
     board_window: pancurses::Window,
 
-    board: &'a Board,
+    // board: &'a Board,
 }
 
-impl<'a> Window<'a> {
-    pub fn new(board: &'a Board) -> Result<Window, WindowError> {
+impl Window {
+    pub fn new(backend_channel: channel::Endpoint) -> Result<Window, WindowError> {
         let main_window = initscr();
         let sub_window = main_window.subwin(2 + Board::SIZE, 2 + Board::SIZE * SQUARE_WIDTH as i32, 1, 1)?;
         let w = Window {
+            backend_channel: backend_channel,
             main_window: main_window,
             board_window: sub_window,
-            board: board,
+            // board: board,
         };
         w.main_window.keypad(true); // Allow control characters
         start_color(); // Enable colors
@@ -103,29 +106,39 @@ impl<'a> Window<'a> {
 
     fn draw_board(&self) {
         // for (row_idx, row) in self.board.iter().enumerate() {
-        for (y, row) in self.board.value().iter().enumerate() {
-            for (x, cell) in row.iter().enumerate() {
-                let c = match cell {
-                    Some(piece) => Self::get_piece_char(piece),
-                    None => ' ',
-                };
-                let colors = match COLOR_SCHEME {
-                    ColorScheme::WhiteRed   => [Color::WhiteOnRed as i16,   Color::RedOnWhite as i16],
-                    ColorScheme::RedBlack   => [Color::RedOnBlack as i16,   Color::BlackOnRed as i16],
-                    ColorScheme::WhiteBlack => [Color::WhiteOnBlack as i16, Color::BlackOnWhite as i16],
-                };
-                self.board_window.color_set(colors[(x + y + 1) % 2]);
-                self.board_window.mvaddstr(
-                    (y + 1) as i32,
-                    (x * SQUARE_WIDTH + 1) as i32,
-                    format!("{char:^width$}", char=c, width=SQUARE_WIDTH),
-                );
-            }
-        }
+        self.board_window.addstr("BOARD");
+        // for (y, row) in self.board.value().iter().enumerate() {
+        //     for (x, cell) in row.iter().enumerate() {
+        //         let c = match cell {
+        //             Some(piece) => Self::get_piece_char(piece),
+        //             None => ' ',
+        //         };
+        //         let colors = match COLOR_SCHEME {
+        //             ColorScheme::WhiteRed   => [Color::WhiteOnRed as i16,   Color::RedOnWhite as i16],
+        //             ColorScheme::RedBlack   => [Color::RedOnBlack as i16,   Color::BlackOnRed as i16],
+        //             ColorScheme::WhiteBlack => [Color::WhiteOnBlack as i16, Color::BlackOnWhite as i16],
+        //         };
+        //         self.board_window.color_set(colors[(x + y + 1) % 2]);
+        //         self.board_window.mvaddstr(
+        //             (y + 1) as i32,
+        //             (x * SQUARE_WIDTH + 1) as i32,
+        //             format!("{char:^width$}", char=c, width=SQUARE_WIDTH),
+        //         );
+        //     }
+        // }
     }
 
     pub fn run(&self) {
         loop {
+            println!("frontend sending");
+            self.backend_channel.tx.send(channel::Message::Log{msg: String::from("TEST MESSAGE")});
+            println!("frontend receiving");
+            let msg = self.backend_channel.rx.recv().unwrap();
+            let s = match msg {
+                channel::Message::Log{ msg: s } => s,
+            };
+            log!(self.main_window, "Recvd: {}", s);
+
             self.draw_board();
 
             // self.main_window.addstr("○●◯◖◗⬤⭗⭕⭘🔴🔵🞉🞊♛♕♔♚👑⛀⛂⛁⛃");

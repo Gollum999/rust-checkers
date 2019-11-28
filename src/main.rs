@@ -1,10 +1,19 @@
-mod frontend;
 mod backend;
+mod channel;
+mod frontend;
+
+use std::thread;
 
 fn main() {
-    let game = backend::Game::new();
-    let window = frontend::Window::new(game.get_board()).unwrap();
+    let (backend_endpoint, frontend_endpoint) = channel::make_two_way_channel();
 
+    let render_thread = thread::spawn(move || {
+        let window = frontend::Window::new(frontend_endpoint).unwrap();
+        window.run();
+    });
+
+    let game = backend::Game::new(backend_endpoint);
     game.start();
-    window.run();
+
+    render_thread.join();
 }
