@@ -37,10 +37,11 @@ impl Board {
             ]
         )
     }
+
     // TODO not sure of the best way to expose the array iterator
-    pub fn value(&self) -> &_Board {
-        &self.0
-    }
+    // pub fn value(&self) -> &_Board {
+    //     &self.0
+    // }
 }
 
 // impl IntoIterator for Board {

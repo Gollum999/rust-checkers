@@ -15,5 +15,5 @@ fn main() {
     let game = backend::Game::new(backend_endpoint);
     game.start();
 
-    render_thread.join();
+    render_thread.join().unwrap();
 }

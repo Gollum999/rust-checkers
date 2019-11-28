@@ -79,6 +79,7 @@ impl Window {
             // board: board,
         };
         w.main_window.keypad(true); // Allow control characters
+        w.main_window.nodelay(true); // Input is non-blocking
         start_color(); // Enable colors
         noecho(); // Don't echo typed characters
 
@@ -106,7 +107,6 @@ impl Window {
 
     fn draw_board(&self) {
         // for (row_idx, row) in self.board.iter().enumerate() {
-        self.board_window.addstr("BOARD");
         // for (y, row) in self.board.value().iter().enumerate() {
         //     for (x, cell) in row.iter().enumerate() {
         //         let c = match cell {
@@ -130,9 +130,7 @@ impl Window {
 
     pub fn run(&self) {
         loop {
-            println!("frontend sending");
-            self.backend_channel.tx.send(channel::Message::Log{msg: String::from("TEST MESSAGE")});
-            println!("frontend receiving");
+            self.backend_channel.tx.send(channel::Message::Log{msg: String::from("TEST MESSAGE")}).unwrap();
             let msg = self.backend_channel.rx.recv().unwrap();
             let s = match msg {
                 channel::Message::Log{ msg: s } => s,
@@ -149,8 +147,9 @@ impl Window {
                 Some(Input::Character('q')) => break,
                 Some(Input::KeyDC) => break,
                 Some(_) => (),
-                None => ()
+                None => (),
             }
         }
+        println!("DONE");
     }
 }

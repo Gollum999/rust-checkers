@@ -12,6 +12,7 @@ pub fn make_two_way_channel() -> (Endpoint, Endpoint) {
     (Endpoint{ tx: tx1, rx: rx2 }, Endpoint{ tx: tx2, rx: rx1 })
 }
 
+#[derive(Debug)]
 pub enum Message {
     Log{ msg: String },
 }
