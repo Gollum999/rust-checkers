@@ -118,6 +118,8 @@ impl Board {
             || (piece.team == Team::Black && dy >= 1);
         let correct_distance = dx.abs() == distance && dy.abs() == distance;
 
+        // println!("Piece: {:?}, dx: {} dy: {}, correct_dir: {}, correct_distance: {}",
+        //          piece, dx, dy, correct_direction, correct_distance);
         !self.square_occupied(to) && correct_direction && correct_distance && Self::in_bounds(to)
     }
 
@@ -195,7 +197,20 @@ impl Board {
     // }
 
     pub fn apply_move(&mut self, m: &Move) {
-        let piece = self.pieces.remove(&m.from).unwrap();
+        let mut piece = self.pieces.remove(&m.from).unwrap();
+
+        // Jump
+        if (m.from.x - m.to.x).abs() == 2 {
+            let between = Square{ x: m.from.x + m.to.x / 2, y: m.from.y + m.to.y / 2 };
+            self.pieces.remove(&between);
+        }
+
+        // Promotion
+        if (piece.team == Team::White && m.to.y == 0)
+        || (piece.team == Team::Black && m.to.y == Self::SIZE) {
+            piece.piece_type = PieceType::King;
+        }
+
         self.pieces.insert(m.to, piece);
     }
 }
