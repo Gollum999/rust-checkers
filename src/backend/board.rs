@@ -132,7 +132,7 @@ impl Board {
             Some(x) => x,
             None => return false,
         };
-        let between = Square{ x: from.x + to.x / 2, y: from.y + to.y / 2 };
+        let between = Square{ x: (from.x + to.x) / 2, y: (from.y + to.y) / 2 };
         let between_piece = match self.pieces.get(&between) {
             Some(x) => x,
             None => return false,
@@ -201,13 +201,13 @@ impl Board {
 
         // Jump
         if (m.from.x - m.to.x).abs() == 2 {
-            let between = Square{ x: m.from.x + m.to.x / 2, y: m.from.y + m.to.y / 2 };
+            let between = Square{ x: (m.from.x + m.to.x) / 2, y: (m.from.y + m.to.y) / 2 };
             self.pieces.remove(&between);
         }
 
         // Promotion
         if (piece.team == Team::White && m.to.y == 0)
-        || (piece.team == Team::Black && m.to.y == Self::SIZE) {
+        || (piece.team == Team::Black && m.to.y == Self::SIZE - 1) {
             piece.piece_type = PieceType::King;
         }
 
