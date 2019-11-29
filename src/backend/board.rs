@@ -118,8 +118,8 @@ impl Board {
             || (piece.team == Team::Black && dy >= 1);
         let correct_distance = dx.abs() == distance && dy.abs() == distance;
 
-        // println!("Piece: {:?}, dx: {} dy: {}, correct_dir: {}, correct_distance: {}",
-        //          piece, dx, dy, correct_direction, correct_distance);
+        // println!("Piece: {:?}, dx: {} dy: {}, correct_dir: {}, correct_distance: {}, occupied: {}, in bounds: {}",
+        //          piece, dx, dy, correct_direction, correct_distance, self.square_occupied(to), Self::in_bounds(to));
         !self.square_occupied(to) && correct_direction && correct_distance && Self::in_bounds(to)
     }
 
@@ -138,6 +138,7 @@ impl Board {
             None => return false,
         };
 
+        // println!("JUMP? Piece: {:?}, between: {}, between piece: {:?}", piece, between, between_piece);
         self._can_step(from, to, 2) && piece.team != between_piece.team
     }
 
@@ -271,7 +272,7 @@ mod tests {
 
     #[test]
     fn test_can_step() {
-        let board = Board::new();
+        let mut board = Board::new();
 
         assert!( board.can_step(&Square{ x:  1, y:  2 }, &Square{ x:  2, y:  3 }));
         assert!( board.can_step(&Square{ x:  1, y:  2 }, &Square{ x:  0, y:  3 }));
@@ -310,6 +311,30 @@ mod tests {
         assert!(!board.can_step(&Square{ x:  7, y:  2 }, &Square{ x:  8, y:  3 }));
 
         // Wrong direction
+        board.apply_move(&Move{ from: Square{ x: 1, y: 2 }, to: Square{ x: 2, y: 3 }});
+        assert!(!board.can_step(&Square{ x: 2, y: 3 }, &Square{ x: 1, y: 2 }));
         // TODO
+    }
+
+    #[test]
+    fn test_can_jump() {
+        let mut pieces = HashMap::new();
+
+        pieces.insert(Square{x: 4, y: 4}, Piece{ team: Team::Black, piece_type: PieceType::King });
+        let mut add_piece = |x, y, team| {
+            pieces.insert(Square{x, y}, Piece{ team, piece_type: PieceType::Man });
+        };
+                                      //   2 3 4 5
+        add_piece(3, 5, Team::Black); // 2 W
+        add_piece(3, 3, Team::White); // 3   W   W
+        add_piece(2, 2, Team::White); // 4     B
+        add_piece(5, 3, Team::White); // 5   B
+
+        let board = Board {pieces: pieces};
+
+        assert!(!board.can_jump(&Square{ x: 4, y: 4 }, &Square{ x: 2, y: 2 })); // Space occupied
+        assert!(!board.can_jump(&Square{ x: 4, y: 4 }, &Square{ x: 2, y: 6 })); // Can't jump over own piece
+        assert!( board.can_jump(&Square{ x: 4, y: 4 }, &Square{ x: 6, y: 2 }));
+        assert!(!board.can_jump(&Square{ x: 4, y: 4 }, &Square{ x: 6, y: 6 })); // No piece to jump over
     }
 }
