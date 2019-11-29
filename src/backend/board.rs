@@ -102,8 +102,8 @@ impl Board {
         self.pieces.contains_key(s)
     }
 
-    fn in_bounds(&self, s: &Square) -> bool {
-        0 <= s.x && s.x <= Self::SIZE && 0 <= s.y && s.y <= Self::SIZE
+    fn in_bounds(s: &Square) -> bool {
+        0 <= s.x && s.x < Self::SIZE && 0 <= s.y && s.y < Self::SIZE
     }
 
     fn _can_step(&self, from: &Square, to: &Square, distance: i8) -> bool {
@@ -111,14 +111,14 @@ impl Board {
             Some(x) => x,
             None => return false,
         };
-        let dx = from.x - to.x;
-        let dy = from.y - to.y;
+        let dx = to.x - from.x;
+        let dy = to.y - from.y;
         let correct_direction = piece.piece_type == PieceType::King
             || (piece.team == Team::White && dy <= -1)
             || (piece.team == Team::Black && dy >= 1);
         let correct_distance = dx.abs() == distance && dy.abs() == distance;
 
-        !self.square_occupied(to) && correct_direction && correct_distance && self.in_bounds(to)
+        !self.square_occupied(to) && correct_direction && correct_distance && Self::in_bounds(to)
     }
 
     fn can_step(&self, from: &Square, to: &Square) -> bool {
