@@ -71,7 +71,7 @@ pub struct Window {
 impl Window {
     pub fn new(backend_channel: channel::Endpoint) -> Result<Window, WindowError> {
         let main_window = initscr();
-        let sub_window = main_window.subwin(2 + Board::SIZE, 2 + Board::SIZE * SQUARE_WIDTH as i32, 1, 1)?;
+        let sub_window = main_window.subwin(2 + Board::SIZE as i32, 2 + Board::SIZE as i32 * SQUARE_WIDTH as i32, 1, 1)?;
         let w = Window {
             backend_channel: backend_channel,
             main_window: main_window,

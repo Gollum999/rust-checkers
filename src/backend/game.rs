@@ -7,10 +7,10 @@ use std::sync::mpsc::RecvError;
 use std::thread;
 use std::time::Duration;
 
-pub struct Game {
+pub struct Game<'a> {
     frontend_channel: channel::Endpoint,
-    board: Board,
-    players: [Player; 2],
+    board: &'a Board,
+    players: [Player<'a>; 2],
     score: [i8; 2],
 }
 
@@ -21,12 +21,12 @@ macro_rules! log {
     };
 }
 
-impl Game {
-    pub fn new(frontend_channel: channel::Endpoint) -> Game {
+impl<'a> Game<'a> {
+    pub fn new(board: &Board, frontend_channel: channel::Endpoint) -> Game {
         Game {
             frontend_channel: frontend_channel,
-            board: Board::new(),
-            players: [Player::Computer{ ai: Ai{} }, Player::Computer{ ai: Ai{} }],
+            board: board,
+            players: [Player::Computer{ ai: Ai{ board } }, Player::Computer{ ai: Ai{ board } }],
             score: [0, 0],
         }
     }
@@ -65,7 +65,8 @@ impl Game {
 
     fn process_ai(&self, ai: &Ai) -> Result<(), RecvError> {
         // let msg = self.frontend_channel.rx.recv()?;
-        log!(self, "Processing AI");
+        let next_move = ai.get_next_move();
+        log!(self, "Processing AI, next move: {}", next_move);
         thread::sleep(Duration::from_millis(1000));
         Ok(())
     }
