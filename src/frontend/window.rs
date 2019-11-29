@@ -97,22 +97,22 @@ impl Window {
         Ok(w)
     }
 
-    fn get_piece_glyph(piece: &Piece) -> char {
-        match (piece.team, piece.piece_type) {
-            (Team::White, PieceType::Man)  => '⛀',
-            (Team::Black, PieceType::Man)  => '⛂',
-            (Team::White, PieceType::King) => '⛁',
-            (Team::Black, PieceType::King) => '⛃',
+    fn get_piece_glyph(piece: Option<&Piece>) -> char {
+        match piece {
+            Some(piece) => match (piece.team, piece.piece_type) {
+                (Team::White, PieceType::Man)  => '⛀',
+                (Team::Black, PieceType::Man)  => '⛂',
+                (Team::White, PieceType::King) => '⛁',
+                (Team::Black, PieceType::King) => '⛃',
+            },
+            None => ' ',
         }
     }
 
     fn draw_board(&self, pieces: HashMap<Square, Piece>) {
         for y in 0..Board::SIZE {
             for x in 0..Board::SIZE {
-                let c = match pieces.get(&Square{x, y}) {
-                    Some(piece) => Self::get_piece_glyph(piece),
-                    None => ' ',
-                };
+                let c = Self::get_piece_glyph(pieces.get(&Square{x, y}));
                 let colors = match COLOR_SCHEME {
                     ColorScheme::WhiteRed   => [Color::WhiteOnRed as i16,   Color::RedOnWhite as i16],
                     ColorScheme::RedBlack   => [Color::RedOnBlack as i16,   Color::BlackOnRed as i16],
