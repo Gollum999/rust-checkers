@@ -1,6 +1,6 @@
 use super::ai::Ai;
 
-pub enum Player<'a> {
+pub enum Player {
     Human,
-    Computer{ ai: Ai<'a> },
+    Computer{ ai: Ai },
 }

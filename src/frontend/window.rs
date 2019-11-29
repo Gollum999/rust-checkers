@@ -1,8 +1,9 @@
 extern crate pancurses;
 
+use std::collections::HashMap;
 use super::super::backend;
 use super::super::channel; // TODO any way to clean this up?
-use backend::{Board, Piece, PieceType, Team}; // TODO this is a bit messy too
+use backend::{Board, Piece, PieceType, Square, Team}; // TODO this is a bit messy too
 
 use pancurses::{
     ACS_HLINE, ACS_VLINE,
@@ -47,14 +48,14 @@ struct Point {
 }
 
 macro_rules! log {
-    ( $window:expr, $( $arg:expr ),* ) => {
+    ( $window:expr, $( $arg:expr ),* ) => {{
         let old_pos = Point{ x: $window.get_cur_x(), y: $window.get_cur_y() };
         const LOG_POS: Point = Point{ x: 1, y: 12 };
         $window.mv(LOG_POS.y, LOG_POS.x);
         $window.insertln();
         $window.addstr(format!($($arg),*));
         $window.mv(old_pos.y, old_pos.x);
-    };
+    }};
 }
 
 const SQUARE_WIDTH: usize = 3;
@@ -96,7 +97,7 @@ impl Window {
         Ok(w)
     }
 
-    fn get_piece_char(piece: &Piece) -> char {
+    fn get_piece_glyph(piece: &Piece) -> char {
         match (piece.team, piece.piece_type) {
             (Team::White, PieceType::Man)  => '⛀',
             (Team::Black, PieceType::Man)  => '⛂',
@@ -105,41 +106,40 @@ impl Window {
         }
     }
 
-    fn draw_board(&self) {
-        // for (row_idx, row) in self.board.iter().enumerate() {
-        // for (y, row) in self.board.value().iter().enumerate() {
-        //     for (x, cell) in row.iter().enumerate() {
-        //         let c = match cell {
-        //             Some(piece) => Self::get_piece_char(piece),
-        //             None => ' ',
-        //         };
-        //         let colors = match COLOR_SCHEME {
-        //             ColorScheme::WhiteRed   => [Color::WhiteOnRed as i16,   Color::RedOnWhite as i16],
-        //             ColorScheme::RedBlack   => [Color::RedOnBlack as i16,   Color::BlackOnRed as i16],
-        //             ColorScheme::WhiteBlack => [Color::WhiteOnBlack as i16, Color::BlackOnWhite as i16],
-        //         };
-        //         self.board_window.color_set(colors[(x + y + 1) % 2]);
-        //         self.board_window.mvaddstr(
-        //             (y + 1) as i32,
-        //             (x * SQUARE_WIDTH + 1) as i32,
-        //             format!("{char:^width$}", char=c, width=SQUARE_WIDTH),
-        //         );
-        //     }
-        // }
+    fn draw_board(&self, pieces: HashMap<Square, Piece>) {
+        for y in 0..Board::SIZE {
+            for x in 0..Board::SIZE {
+                let c = match pieces.get(&Square{x, y}) {
+                    Some(piece) => Self::get_piece_glyph(piece),
+                    None => ' ',
+                };
+                let colors = match COLOR_SCHEME {
+                    ColorScheme::WhiteRed   => [Color::WhiteOnRed as i16,   Color::RedOnWhite as i16],
+                    ColorScheme::RedBlack   => [Color::RedOnBlack as i16,   Color::BlackOnRed as i16],
+                    ColorScheme::WhiteBlack => [Color::WhiteOnBlack as i16, Color::BlackOnWhite as i16],
+                };
+                self.board_window.color_set(colors[((x + y + 1) % 2) as usize]);
+                self.board_window.mvaddstr(
+                    (y + 1) as i32,
+                    (x * SQUARE_WIDTH as i8 + 1) as i32,
+                    format!("{char:^width$}", char=c, width=SQUARE_WIDTH),
+                );
+            }
+        }
     }
 
     pub fn run(&self) {
         loop {
             self.backend_channel.tx.send(channel::Message::Log{msg: String::from("TEST MESSAGE")}).unwrap();
             let msg = self.backend_channel.rx.recv().unwrap();
-            let s = match msg {
-                channel::Message::Log{ msg: s } => s,
+            match msg {
+                channel::Message::Log{ msg: s } => log!(self.main_window, "Recvd: {}", s),
+                channel::Message::BoardState(pieces) => self.draw_board(pieces),
             };
-            log!(self.main_window, "Recvd: {}", s);
 
-            self.draw_board();
 
             // self.main_window.addstr("○●◯◖◗⬤⭗⭕⭘🔴🔵🞉🞊♛♕♔♚👑⛀⛂⛁⛃");
+            // self.board_window.touch(); // TODO testing this
             self.board_window.refresh();
             self.main_window.refresh();
 

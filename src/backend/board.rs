@@ -33,7 +33,7 @@ impl fmt::Display for Square {
         write!(f, "{}, {}", self.x, self.y)
     }
 }
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, PartialEq, Eq, Debug)]
 pub struct Move {
     pub from: Square,
     pub to: Square,
@@ -172,19 +172,32 @@ impl Board {
         Ok(moves)
     }
 
-    pub fn get_all_valid_moves(&self) -> Vec<Move> {
+    pub fn get_all_valid_moves(&self, team: Team) -> Vec<Move> {
         let mut moves = Vec::new();
         for square in self.pieces.keys() {
-            moves.append(&mut self.get_valid_moves_for_piece_at(square).unwrap());
+            match self.pieces.get(square) {
+                Some(p) if p.team == team => {
+                    moves.append(&mut self.get_valid_moves_for_piece_at(square).unwrap());
+                },
+                _ => (),
+            }
         }
 
         moves
     }
 
+    pub fn get_pieces(&self) -> &HashMap<Square, Piece> {
+        &self.pieces
+    }
     // TODO not sure of the best way to expose the array iterator
     // pub fn value(&self) -> &_Board {
     //     &self.0
     // }
+
+    pub fn apply_move(&mut self, m: &Move) {
+        let piece = self.pieces.remove(&m.from).unwrap();
+        self.pieces.insert(m.to, piece);
+    }
 }
 
 // impl IntoIterator for Board {

@@ -12,8 +12,7 @@ fn main() {
         window.run();
     });
 
-    let board = backend::Board::new();
-    let game = backend::Game::new(&board, backend_endpoint);
+    let mut game = backend::Game::new(backend_endpoint);
     game.start();
 
     render_thread.join().unwrap();

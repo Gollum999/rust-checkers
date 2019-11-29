@@ -1,5 +1,5 @@
 use super::ai::Ai;
-use super::board::Board;
+use super::board::{Board, Move, Team};
 use super::player::Player;
 use super::super::channel; // TODO any way to clean this up?
 
@@ -7,10 +7,9 @@ use std::sync::mpsc::RecvError;
 use std::thread;
 use std::time::Duration;
 
-pub struct Game<'a> {
+pub struct Game {
     frontend_channel: channel::Endpoint,
-    board: &'a Board,
-    players: [Player<'a>; 2],
+    board: Board,
     score: [i8; 2],
 }
 
@@ -21,12 +20,11 @@ macro_rules! log {
     };
 }
 
-impl<'a> Game<'a> {
-    pub fn new(board: &Board, frontend_channel: channel::Endpoint) -> Game {
+impl Game {
+    pub fn new(frontend_channel: channel::Endpoint) -> Game {
         Game {
             frontend_channel: frontend_channel,
-            board: board,
-            players: [Player::Computer{ ai: Ai{ board } }, Player::Computer{ ai: Ai{ board } }],
+            board: Board::new(),
             score: [0, 0],
         }
     }
@@ -36,8 +34,12 @@ impl<'a> Game<'a> {
         self.score.iter().any(|score| score >= &PIECES_PER_PLAYER) // TODO why do I have to borrow here?
     }
 
-    pub fn start(&self) {
-        let mut player_iter = self.players.iter().enumerate().cycle();
+    pub fn start(&mut self) {
+        let players = [
+            Player::Computer{ ai: Ai{ team: Team::White } },
+            Player::Computer{ ai: Ai{ team: Team::Black } },
+        ];
+        let mut player_iter = players.iter().enumerate().cycle();
         while !self.game_over() {
             let (player_idx, current_player) = player_iter.next().unwrap();
             let result = match current_player {
@@ -54,7 +56,7 @@ impl<'a> Game<'a> {
         println!("Game thread done");
     }
 
-    fn process_human(&self, player: &Player) -> Result<(), RecvError> {
+    fn process_human(&mut self, player: &Player) -> Result<(), RecvError> {
         let msg = self.frontend_channel.rx.recv()?;
         match msg {
             // Ok(channel::Message::Move{ msg: s }) => s,  // TODO
@@ -63,11 +65,17 @@ impl<'a> Game<'a> {
         Ok(())
     }
 
-    fn process_ai(&self, ai: &Ai) -> Result<(), RecvError> {
+    fn process_ai(&mut self, ai: &Ai) -> Result<(), RecvError> {
         // let msg = self.frontend_channel.rx.recv()?;
-        let next_move = ai.get_next_move();
+        let next_move = ai.get_next_move(&self.board);
+        self.board.apply_move(&next_move);
+        self.update_frontend();
         log!(self, "Processing AI, next move: {}", next_move);
         thread::sleep(Duration::from_millis(1000));
         Ok(())
+    }
+
+    fn update_frontend(&self) {
+        self.frontend_channel.tx.send(channel::Message::BoardState(self.board.get_pieces().clone())).expect("Could not send board state"); // TODO better handling
     }
 }

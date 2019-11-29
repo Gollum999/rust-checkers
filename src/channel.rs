@@ -1,4 +1,6 @@
 use std::sync::mpsc;
+use std::collections::HashMap;
+use super::backend::{Piece, Square};
 
 pub struct Endpoint {
     pub tx: mpsc::Sender<Message>,
@@ -15,4 +17,5 @@ pub fn make_two_way_channel() -> (Endpoint, Endpoint) {
 #[derive(Debug)]
 pub enum Message {
     Log{ msg: String },
+    BoardState(HashMap<Square, Piece>),
 }
