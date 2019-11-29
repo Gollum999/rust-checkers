@@ -217,3 +217,84 @@ impl Board {
 //         self.0.iter()
 //     }
 // }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_in_bounds() {
+        assert!( Board::in_bounds(&Square{ x:  0, y:  0 }));
+        assert!( Board::in_bounds(&Square{ x:  0, y:  7 }));
+        assert!( Board::in_bounds(&Square{ x:  7, y:  0 }));
+        assert!( Board::in_bounds(&Square{ x:  7, y:  7 }));
+
+        assert!(!Board::in_bounds(&Square{ x: -1, y:  0 }));
+        assert!(!Board::in_bounds(&Square{ x:  0, y: -1 }));
+        assert!(!Board::in_bounds(&Square{ x: -1, y: -1 }));
+        assert!(!Board::in_bounds(&Square{ x:  0, y:  8 }));
+        assert!(!Board::in_bounds(&Square{ x:  8, y:  0 }));
+        assert!(!Board::in_bounds(&Square{ x:  8, y:  8 }));
+    }
+
+    #[test]
+    fn test_square_occupied() {
+        let board = Board::new();
+        assert!( board.square_occupied(&Square{ x:  0, y:  1 }));
+        assert!( board.square_occupied(&Square{ x:  1, y:  0 }));
+        assert!( board.square_occupied(&Square{ x:  6, y:  7 }));
+        assert!( board.square_occupied(&Square{ x:  7, y:  6 }));
+
+        assert!(!board.square_occupied(&Square{ x:  0, y:  0 }));
+        assert!(!board.square_occupied(&Square{ x:  4, y:  4 }));
+        assert!(!board.square_occupied(&Square{ x:  5, y:  5 }));
+        assert!(!board.square_occupied(&Square{ x:  7, y:  7 }));
+
+        assert!(!board.square_occupied(&Square{ x: -1, y: -1 }));
+        assert!(!board.square_occupied(&Square{ x:  8, y:  8 }));
+    }
+
+    #[test]
+    fn test_can_step() {
+        let board = Board::new();
+
+        assert!( board.can_step(&Square{ x:  1, y:  2 }, &Square{ x:  2, y:  3 }));
+        assert!( board.can_step(&Square{ x:  1, y:  2 }, &Square{ x:  0, y:  3 }));
+        assert!( board.can_step(&Square{ x:  3, y:  2 }, &Square{ x:  2, y:  3 }));
+        assert!( board.can_step(&Square{ x:  3, y:  2 }, &Square{ x:  4, y:  3 }));
+        assert!( board.can_step(&Square{ x:  0, y:  5 }, &Square{ x:  1, y:  4 }));
+        assert!( board.can_step(&Square{ x:  2, y:  5 }, &Square{ x:  1, y:  4 }));
+        assert!( board.can_step(&Square{ x:  2, y:  5 }, &Square{ x:  3, y:  4 }));
+
+        // No piece at `from`
+        assert!(!board.can_step(&Square{ x:  0, y:  0 }, &Square{ x:  1, y:  1 }));
+        assert!(!board.can_step(&Square{ x:  0, y:  2 }, &Square{ x:  1, y:  3 }));
+        assert!(!board.can_step(&Square{ x:  2, y:  0 }, &Square{ x:  3, y:  1 }));
+        assert!(!board.can_step(&Square{ x:  7, y:  7 }, &Square{ x:  6, y:  6 }));
+        assert!(!board.can_step(&Square{ x: -1, y: -1 }, &Square{ x:  0, y:  0 }));
+        assert!(!board.can_step(&Square{ x:  8, y:  8 }, &Square{ x:  7, y:  7 }));
+
+        // `to` is occupied
+        assert!(!board.can_step(&Square{ x:  1, y:  0 }, &Square{ x:  2, y:  1 }));
+        assert!(!board.can_step(&Square{ x:  0, y:  1 }, &Square{ x:  1, y:  2 }));
+        assert!(!board.can_step(&Square{ x:  0, y:  7 }, &Square{ x:  1, y:  6 }));
+        assert!(!board.can_step(&Square{ x:  1, y:  6 }, &Square{ x:  0, y:  5 }));
+
+        // Wrong distance
+        assert!(!board.can_step(&Square{ x:  3, y:  2 }, &Square{ x:  0, y:  3 }));
+        assert!(!board.can_step(&Square{ x:  3, y:  2 }, &Square{ x:  1, y:  3 }));
+        assert!(!board.can_step(&Square{ x:  3, y:  2 }, &Square{ x:  3, y:  3 }));
+        assert!(!board.can_step(&Square{ x:  3, y:  2 }, &Square{ x:  0, y:  4 }));
+        assert!(!board.can_step(&Square{ x:  3, y:  2 }, &Square{ x:  1, y:  4 }));
+        assert!(!board.can_step(&Square{ x:  3, y:  2 }, &Square{ x:  2, y:  4 }));
+        assert!(!board.can_step(&Square{ x:  3, y:  2 }, &Square{ x:  3, y:  4 }));
+
+        // Out of bounds
+        assert!(!board.can_step(&Square{ x:  7, y:  0 }, &Square{ x:  8, y:  1 }));
+        assert!(!board.can_step(&Square{ x:  0, y:  1 }, &Square{ x:  8, y:  2 }));
+        assert!(!board.can_step(&Square{ x:  7, y:  2 }, &Square{ x:  8, y:  3 }));
+
+        // Wrong direction
+        // TODO
+    }
+}
