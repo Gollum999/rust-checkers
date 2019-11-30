@@ -50,7 +50,7 @@ struct Point {
 macro_rules! log {
     ( $window:expr, $( $arg:expr ),* ) => {{
         let old_pos = Point{ x: $window.get_cur_x(), y: $window.get_cur_y() };
-        const LOG_POS: Point = Point{ x: 1, y: 12 };
+        const LOG_POS: Point = Point{ x: 1, y: 11 };
         $window.mv(LOG_POS.y, LOG_POS.x);
         $window.insertln();
         $window.addstr(format!($($arg),*));
@@ -72,7 +72,7 @@ pub struct Window {
 impl Window {
     pub fn new(backend_channel: channel::Endpoint) -> Result<Window, WindowError> {
         let main_window = initscr();
-        let sub_window = main_window.subwin(2 + Board::SIZE as i32, 2 + Board::SIZE as i32 * SQUARE_WIDTH as i32, 1, 1)?;
+        let sub_window = main_window.subwin(2 + Board::SIZE as i32, 2 + Board::SIZE as i32 * SQUARE_WIDTH as i32, 0, 0)?;
         let w = Window {
             backend_channel: backend_channel,
             main_window: main_window,
@@ -91,7 +91,6 @@ impl Window {
         init_pair(Color::WhiteOnBlack as i16, COLOR_WHITE, COLOR_BLACK);
         init_pair(Color::BlackOnWhite as i16, COLOR_BLACK, COLOR_WHITE);
 
-        w.main_window.draw_box(ACS_VLINE(), ACS_HLINE());
         w.board_window.draw_box(ACS_VLINE(), ACS_HLINE());
 
         Ok(w)
@@ -130,16 +129,14 @@ impl Window {
 
     pub fn run(&self) {
         loop {
-            self.backend_channel.tx.send(channel::Message::Log{msg: String::from("TEST MESSAGE")}).unwrap();
             let msg = self.backend_channel.rx.recv().unwrap();
             match msg {
-                channel::Message::Log{ msg: s } => log!(self.main_window, "Recvd: {}", s),
+                channel::Message::Log{ msg: s } => log!(self.main_window, "{}", s),
                 channel::Message::BoardState(pieces) => self.draw_board(pieces),
             };
 
-
             // self.main_window.addstr("○●◯◖◗⬤⭗⭕⭘🔴🔵🞉🞊♛♕♔♚👑⛀⛂⛁⛃");
-            // self.board_window.touch(); // TODO testing this
+            self.board_window.clearok(true); // This gets rid of the wide-char artifacts, but not the most efficient
             self.board_window.refresh();
             self.main_window.refresh();
 

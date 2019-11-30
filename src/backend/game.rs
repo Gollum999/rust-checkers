@@ -67,7 +67,6 @@ impl Game {
     }
 
     fn process_ai(&mut self, ai: &Ai) -> Result<bool, RecvError> {
-        // let msg = self.frontend_channel.rx.recv()?;
         let next_moves = ai.get_next_moves(self.board.clone());
         if next_moves.is_empty() {
             return Ok(false); // TODO clean up
