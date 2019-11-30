@@ -99,10 +99,10 @@ impl Window {
     fn get_piece_glyph(piece: Option<&Piece>) -> char {
         match piece {
             Some(piece) => match (piece.team, piece.piece_type) {
-                (Team::White, PieceType::Man)  => '⛀',
-                (Team::Black, PieceType::Man)  => '⛂',
-                (Team::White, PieceType::King) => '⛁',
-                (Team::Black, PieceType::King) => '⛃',
+                (Team::Light, PieceType::Man)  => '⛂',
+                (Team::Dark,  PieceType::Man)  => '⛀',
+                (Team::Light, PieceType::King) => '⛃',
+                (Team::Dark,  PieceType::King) => '⛁',
             },
             None => ' ',
         }

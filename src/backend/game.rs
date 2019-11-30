@@ -36,8 +36,8 @@ impl Game {
 
     pub fn start(&mut self) {
         let players = [
-            Player::Computer{ ai: Ai{ team: Team::White } },
-            Player::Computer{ ai: Ai{ team: Team::Black } },
+            Player::Computer{ ai: Ai{ team: Team::Light } },
+            Player::Computer{ ai: Ai{ team: Team::Dark } },
         ];
         self.update_frontend();
         let mut player_iter = players.iter().enumerate().cycle();

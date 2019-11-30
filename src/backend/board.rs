@@ -4,8 +4,8 @@ use std::ops;
 
 #[derive(Copy, Clone, PartialEq, Eq, Debug)]
 pub enum Team {
-    White,
-    Black,
+    Light,
+    Dark,
 }
 #[derive(Copy, Clone, PartialEq, Eq, Debug)]
 pub enum PieceType {
@@ -66,31 +66,31 @@ impl Board {
             pieces.insert(Square{x, y}, Piece{ team: team, piece_type: PieceType::Man });
         };
 
-        add_piece(1, 0, Black);
-        add_piece(3, 0, Black);
-        add_piece(5, 0, Black);
-        add_piece(7, 0, Black);
-        add_piece(0, 1, Black);
-        add_piece(2, 1, Black);
-        add_piece(4, 1, Black);
-        add_piece(6, 1, Black);
-        add_piece(1, 2, Black);
-        add_piece(3, 2, Black);
-        add_piece(5, 2, Black);
-        add_piece(7, 2, Black);
+        add_piece(1, 0, Dark);
+        add_piece(3, 0, Dark);
+        add_piece(5, 0, Dark);
+        add_piece(7, 0, Dark);
+        add_piece(0, 1, Dark);
+        add_piece(2, 1, Dark);
+        add_piece(4, 1, Dark);
+        add_piece(6, 1, Dark);
+        add_piece(1, 2, Dark);
+        add_piece(3, 2, Dark);
+        add_piece(5, 2, Dark);
+        add_piece(7, 2, Dark);
 
-        add_piece(0, 5, White);
-        add_piece(2, 5, White);
-        add_piece(4, 5, White);
-        add_piece(6, 5, White);
-        add_piece(1, 6, White);
-        add_piece(3, 6, White);
-        add_piece(5, 6, White);
-        add_piece(7, 6, White);
-        add_piece(0, 7, White);
-        add_piece(2, 7, White);
-        add_piece(4, 7, White);
-        add_piece(6, 7, White);
+        add_piece(0, 5, Light);
+        add_piece(2, 5, Light);
+        add_piece(4, 5, Light);
+        add_piece(6, 5, Light);
+        add_piece(1, 6, Light);
+        add_piece(3, 6, Light);
+        add_piece(5, 6, Light);
+        add_piece(7, 6, Light);
+        add_piece(0, 7, Light);
+        add_piece(2, 7, Light);
+        add_piece(4, 7, Light);
+        add_piece(6, 7, Light);
 
         Board { pieces: pieces }
     }
@@ -120,8 +120,8 @@ impl Board {
         let dx = to.x - from.x;
         let dy = to.y - from.y;
         let correct_direction = piece.piece_type == PieceType::King
-            || (piece.team == Team::White && dy <= -1)
-            || (piece.team == Team::Black && dy >= 1);
+            || (piece.team == Team::Light && dy <= -1)
+            || (piece.team == Team::Dark && dy >= 1);
         let correct_distance = dx.abs() == distance && dy.abs() == distance;
 
         // println!("Piece: {:?}, dx: {} dy: {}, correct_dir: {}, correct_distance: {}, occupied: {}, in bounds: {}",
@@ -213,8 +213,8 @@ impl Board {
         }
 
         // Promotion
-        if (piece.team == Team::White && m.to.y == 0)
-        || (piece.team == Team::Black && m.to.y == Self::SIZE - 1) {
+        if (piece.team == Team::Light && m.to.y == 0)
+        || (piece.team == Team::Dark && m.to.y == Self::SIZE - 1) {
             piece.piece_type = PieceType::King;
         }
 
@@ -326,15 +326,15 @@ mod tests {
     fn test_can_jump() {
         let mut pieces = HashMap::new();
 
-        pieces.insert(Square{x: 4, y: 4}, Piece{ team: Team::Black, piece_type: PieceType::King });
+        pieces.insert(Square{x: 4, y: 4}, Piece{ team: Team::Dark, piece_type: PieceType::King });
         let mut add_piece = |x, y, team| {
             pieces.insert(Square{x, y}, Piece{ team, piece_type: PieceType::Man });
         };
                                       //   2 3 4 5
-        add_piece(3, 5, Team::Black); // 2 W
-        add_piece(3, 3, Team::White); // 3   W   W
-        add_piece(2, 2, Team::White); // 4     B
-        add_piece(5, 3, Team::White); // 5   B
+        add_piece(3, 5, Team::Dark);  // 2 W
+        add_piece(3, 3, Team::Light); // 3   W   W
+        add_piece(2, 2, Team::Light); // 4     B
+        add_piece(5, 3, Team::Light); // 5   B
 
         let board = Board {pieces: pieces};
 
