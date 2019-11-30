@@ -43,9 +43,15 @@ impl fmt::Display for Move {
         write!(f, "{} to {}", self.from, self.to)
     }
 }
+impl Move {
+    pub fn is_jump(&self) -> bool {
+        (self.from.x - self.to.x).abs() > 1
+    }
+}
 
 type _Row = [Option<Piece>; 8];
 type _Board = [_Row; 8];
+#[derive(Clone)]
 pub struct Board {
     pieces: HashMap<Square, Piece>,
 }
@@ -201,7 +207,7 @@ impl Board {
         let mut piece = self.pieces.remove(&m.from).unwrap();
 
         // Jump
-        if (m.from.x - m.to.x).abs() == 2 {
+        if m.is_jump() {
             let between = Square{ x: (m.from.x + m.to.x) / 2, y: (m.from.y + m.to.y) / 2 };
             self.pieces.remove(&between);
         }

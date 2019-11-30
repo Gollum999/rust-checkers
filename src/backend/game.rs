@@ -1,5 +1,5 @@
 use super::ai::Ai;
-use super::board::{Board, Move, Team};
+use super::board::{Board, Team};
 use super::player::Player;
 use super::super::channel; // TODO any way to clean this up?
 
@@ -39,40 +39,55 @@ impl Game {
             Player::Computer{ ai: Ai{ team: Team::White } },
             Player::Computer{ ai: Ai{ team: Team::Black } },
         ];
+        self.update_frontend();
         let mut player_iter = players.iter().enumerate().cycle();
         while !self.game_over() {
             let (player_idx, current_player) = player_iter.next().unwrap();
+            log!(self, "Player {}'s turn", player_idx);
             let result = match current_player {
                 Player::Human => self.process_human(current_player),
                 Player::Computer{ai} => self.process_ai(ai),
             };
             match result { // TODO clean up
                 Err(_) => break, // Frontend closed, channel broken
+                Ok(false) => break,
                 _ => (),
             };
-            // TODO if ai/ai, want to be able to interrupt but don't want to block
-            log!(self, "Player {}'s turn", player_idx);
         }
-        println!("Game thread done");
+        log!(self, "Game over!");
     }
 
-    fn process_human(&mut self, player: &Player) -> Result<(), RecvError> {
+    fn process_human(&mut self, player: &Player) -> Result<bool, RecvError> {
         let msg = self.frontend_channel.rx.recv()?;
         match msg {
             // Ok(channel::Message::Move{ msg: s }) => s,  // TODO
             x => log!(self, "Warning: Unhandled message from frontend: {:?}", x), // TODO I think there is a more idiomatic way to write this
         };
-        Ok(())
+        Ok(true)
     }
 
-    fn process_ai(&mut self, ai: &Ai) -> Result<(), RecvError> {
+    fn process_ai(&mut self, ai: &Ai) -> Result<bool, RecvError> {
         // let msg = self.frontend_channel.rx.recv()?;
-        let next_move = ai.get_next_move(&self.board);
-        self.board.apply_move(&next_move);
-        self.update_frontend();
-        log!(self, "Processing AI, next move: {}", next_move);
-        thread::sleep(Duration::from_millis(1000));
-        Ok(())
+        let next_moves = ai.get_next_moves(self.board.clone());
+        if next_moves.is_empty() {
+            return Ok(false); // TODO clean up
+        }
+        // log!(self, "next moves: {:?}", next_moves);
+        for mv in next_moves {
+            const AUTO_PLAY: bool = false;
+            if AUTO_PLAY {
+                thread::sleep(Duration::from_millis(1000));
+            } else {
+                use std::io;
+                use std::io::Read;
+                let mut stdin = io::stdin();
+                let _ = stdin.read(&mut [0u8]).unwrap();
+            }
+            log!(self, "Processing AI, next move: {}", mv);
+            self.board.apply_move(&mv);
+            self.update_frontend();
+        }
+        Ok(true)
     }
 
     fn update_frontend(&self) {
