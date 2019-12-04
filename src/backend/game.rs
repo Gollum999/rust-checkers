@@ -1,6 +1,7 @@
 use super::ai::Ai;
 use super::board::{Board, Team};
 use super::player::Player;
+use super::super::args::BackendArgs as Args; // TODO any way to clean this up?
 use super::super::channel; // TODO any way to clean this up?
 
 use std::sync::mpsc::RecvError;
@@ -8,6 +9,7 @@ use std::thread;
 use std::time::Duration;
 
 pub struct Game {
+    args: Args,
     frontend_channel: channel::Endpoint,
     board: Board,
     score: [i8; 2],
@@ -21,8 +23,9 @@ macro_rules! log {
 }
 
 impl Game {
-    pub fn new(frontend_channel: channel::Endpoint) -> Game {
+    pub fn new(args: Args, frontend_channel: channel::Endpoint) -> Game {
         Game {
+            args: args,
             frontend_channel: frontend_channel,
             board: Board::new(),
             score: [0, 0],

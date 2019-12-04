@@ -1,6 +1,8 @@
 extern crate pancurses;
 
 use std::collections::HashMap;
+use super::super::args; // TODO any way to clean this up?
+use args::FrontendArgs as Args;
 use super::super::backend;
 use super::super::channel; // TODO any way to clean this up?
 use backend::{Board, Piece, PieceType, Square, Team}; // TODO this is a bit messy too
@@ -24,12 +26,6 @@ impl From<i32> for WindowError {
             message: format!("Error code {}", code), // TODO prettify common error codes
         }
     }
-}
-
-enum ColorScheme {
-    WhiteRed,
-    RedBlack,
-    WhiteBlack,
 }
 
 #[repr(i16)]
@@ -59,9 +55,10 @@ macro_rules! log {
 }
 
 const SQUARE_WIDTH: usize = 3;
-const COLOR_SCHEME: ColorScheme = ColorScheme::RedBlack;
 
 pub struct Window {
+    args: Args,
+
     backend_channel: channel::Endpoint,
     main_window: pancurses::Window,
     board_window: pancurses::Window,
@@ -70,10 +67,11 @@ pub struct Window {
 }
 
 impl Window {
-    pub fn new(backend_channel: channel::Endpoint) -> Result<Window, WindowError> {
+    pub fn new(args: Args, backend_channel: channel::Endpoint) -> Result<Window, WindowError> {
         let main_window = initscr();
         let sub_window = main_window.subwin(2 + Board::SIZE as i32, 2 + Board::SIZE as i32 * SQUARE_WIDTH as i32, 0, 0)?;
         let w = Window {
+            args: args,
             backend_channel: backend_channel,
             main_window: main_window,
             board_window: sub_window,
@@ -96,13 +94,17 @@ impl Window {
         Ok(w)
     }
 
-    fn get_piece_glyph(piece: Option<&Piece>) -> char {
+    fn get_piece_glyph(piece: Option<&Piece>, ascii: bool) -> char {
         match piece {
-            Some(piece) => match (piece.team, piece.piece_type) {
-                (Team::Light, PieceType::Man)  => '⛂',
-                (Team::Dark,  PieceType::Man)  => '⛀',
-                (Team::Light, PieceType::King) => '⛃',
-                (Team::Dark,  PieceType::King) => '⛁',
+            Some(piece) => match (piece.team, piece.piece_type, ascii) {
+                (Team::Light, PieceType::Man,  true)  => 'O', // TODO better chars
+                (Team::Dark,  PieceType::Man,  true)  => '=',
+                (Team::Light, PieceType::King, true)  => '@',
+                (Team::Dark,  PieceType::King, true)  => '#',
+                (Team::Light, PieceType::Man,  false) => '⛂',
+                (Team::Dark,  PieceType::Man,  false) => '⛀',
+                (Team::Light, PieceType::King, false) => '⛃',
+                (Team::Dark,  PieceType::King, false) => '⛁',
             },
             None => ' ',
         }
@@ -111,11 +113,11 @@ impl Window {
     fn draw_board(&self, pieces: HashMap<Square, Piece>) {
         for y in 0..Board::SIZE {
             for x in 0..Board::SIZE {
-                let c = Self::get_piece_glyph(pieces.get(&Square{x, y}));
-                let colors = match COLOR_SCHEME {
-                    ColorScheme::WhiteRed   => [Color::WhiteOnRed as i16,   Color::RedOnWhite as i16],
-                    ColorScheme::RedBlack   => [Color::RedOnBlack as i16,   Color::BlackOnRed as i16],
-                    ColorScheme::WhiteBlack => [Color::WhiteOnBlack as i16, Color::BlackOnWhite as i16],
+                let c = Self::get_piece_glyph(pieces.get(&Square{x, y}), self.args.ascii);
+                let colors = match self.args.color_scheme {
+                    args::ColorScheme::WhiteRed   => [Color::WhiteOnRed as i16,   Color::RedOnWhite as i16],
+                    args::ColorScheme::RedBlack   => [Color::RedOnBlack as i16,   Color::BlackOnRed as i16],
+                    args::ColorScheme::WhiteBlack => [Color::WhiteOnBlack as i16, Color::BlackOnWhite as i16],
                 };
                 self.board_window.color_set(colors[((x + y + 1) % 2) as usize]);
                 self.board_window.mvaddstr(
