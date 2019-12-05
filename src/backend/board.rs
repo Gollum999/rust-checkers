@@ -40,7 +40,7 @@ pub struct Move {
 }
 impl fmt::Display for Move {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{} to {}", self.from, self.to)
+        write!(f, "({}) -> ({})", self.from, self.to)
     }
 }
 impl Move {
@@ -155,30 +155,39 @@ impl Board {
     pub fn get_valid_moves_for_piece(&self, piece: &Piece) -> Vec<Move> {
         let square = self.find_piece_square(&piece);
 
-        self.get_valid_moves_for_piece_at(square).unwrap()
+        self.get_valid_moves_for_piece_at(square)
     }
 
-    pub fn get_valid_moves_for_piece_at(&self, square: &Square) -> Result<Vec<Move>, String> {
-        let mut moves = Vec::new();
+    fn _get_valid_steps_for_piece_at(&self, square: &Square, is_jump: bool) -> Vec<Move> {
+        let mut steps = Vec::new();
+        let delta = if is_jump { 2 } else { 1 };
 
-        for dx in &[-1, 1] {
-            for dy in &[-1, 1] {
+        for dx in &[-delta, delta] {
+            for dy in &[-delta, delta] {
                 let to = square + (*dx, *dy);
-                if self.can_move(square, &to) {
-                    moves.push(Move{ from: *square, to: to });
-                }
-            }
-        }
-        for dx in &[-2, 2] {
-            for dy in &[-2, 2] {
-                let to = square + (*dx, *dy);
-                if self.can_jump(square, &to) {
-                    moves.push(Move{ from: *square, to: to });
+                if (!is_jump && self.can_step(square, &to))
+                || ( is_jump && self.can_jump(square, &to)) {
+                    steps.push(Move{ from: *square, to: to });
                 }
             }
         }
 
-        Ok(moves)
+        steps
+    }
+
+    pub fn get_valid_steps_for_piece_at(&self, square: &Square) -> Vec<Move> {
+        self._get_valid_steps_for_piece_at(square, false)
+    }
+
+    pub fn get_valid_jumps_for_piece_at(&self, square: &Square) -> Vec<Move> {
+        self._get_valid_steps_for_piece_at(square, true)
+    }
+
+    pub fn get_valid_moves_for_piece_at(&self, square: &Square) -> Vec<Move> {
+        let mut moves = self.get_valid_steps_for_piece_at(&square);
+        moves.append(&mut self.get_valid_jumps_for_piece_at(&square));
+
+        moves
     }
 
     pub fn get_all_valid_moves(&self, team: Team) -> Vec<Move> {
@@ -186,7 +195,7 @@ impl Board {
         for square in self.pieces.keys() {
             match self.pieces.get(square) {
                 Some(p) if p.team == team => {
-                    moves.append(&mut self.get_valid_moves_for_piece_at(square).unwrap());
+                    moves.append(&mut self.get_valid_moves_for_piece_at(square));
                 },
                 _ => (),
             }
