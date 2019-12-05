@@ -12,7 +12,7 @@ pub struct Game {
     args: Args,
     frontend_channel: channel::Endpoint,
     board: Board,
-    score: [i8; 2],
+    // score: [i8; 2],
 }
 
 macro_rules! log {
@@ -28,13 +28,8 @@ impl Game {
             args: args,
             frontend_channel: frontend_channel,
             board: Board::new(),
-            score: [0, 0],
+            // score: [0, 0],
         }
-    }
-
-    fn game_over(&self) -> bool {
-        const PIECES_PER_PLAYER: i8 = 12;
-        self.score.iter().any(|score| score >= &PIECES_PER_PLAYER) // TODO why do I have to borrow here?
     }
 
     pub fn start(&mut self) {
@@ -44,7 +39,7 @@ impl Game {
         ];
         self.update_frontend();
         let mut player_iter = players.iter().enumerate().cycle();
-        while !self.game_over() {
+        while !self.board.game_over() {
             let (player_idx, current_player) = player_iter.next().unwrap();
             log!(self, "Player {}'s turn", player_idx);
             let result = match current_player {

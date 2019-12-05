@@ -1,24 +1,57 @@
-use rand;
-use rand::seq::SliceRandom;
-use super::board::Board;
-use super::board::Move;
-use super::board::Team;
+use super::board::{Board, Move, PieceType, Team};
+
+struct Decision {
+    pub team: Team,
+    pub moves: Vec<Move>,
+    pub board_state: Board,
+}
+impl Decision {
+    pub fn score(&self) -> i32 {
+        use std::i32;
+        static GAME_WIN: i32 = i32::MAX;
+        static GAME_LOSS: i32 = i32::MIN;
+        static VALUE_MAN: i32 = 10;
+        static VALUE_KING: i32 = 20;
+
+        if self.board_state.pieces_alive(self.team) == 0 {
+            return GAME_LOSS;
+        }
+        if self.board_state.pieces_alive(self.team.other()) == 0 {
+            return GAME_WIN;
+        }
+
+        let score = self.board_state.get_pieces()
+                        .values()
+                        .fold(0, |score, piece| {
+                            let multiplier = if piece.team == self.team { 1 } else { -1 };
+                            match piece.piece_type {
+                                PieceType::Man  => score + multiplier * VALUE_MAN,
+                                PieceType::King => score + multiplier * VALUE_KING,
+                            }
+                        });
+        // println!("Score for {:?}: {} ({:?})", self.team, score, self.moves);
+        score
+    }
+}
 
 pub struct Ai {
     pub team: Team,
 }
 impl Ai {
     pub fn get_next_moves(&self, board: Board) -> Vec<Move> {
-        let move_sets = Self::_get_valid_move_sets(self.team, board);
+        let mut decisions = Self::_get_possible_decisions(self.team, board);
 
-        let mut rng = rand::thread_rng();
-        match move_sets.choose(&mut rng) {
-            Some(move_set) => move_set.clone(), // TODO I think this clone is necessary because I can't move out of a reference to an element of a Vector
-            None => Vec::new(), // No valid moves, game over
+        decisions.sort_by_cached_key(Decision::score);
+        // for d in &decisions {
+        //     println!("  decision: {:?} {} ({:?})", d.team, d.score(), d.moves);
+        // }
+        match decisions.last() {
+            Some(decision) => decision.moves.clone(), // TODO I think this clone is necessary because I can't move out of a reference to an element of a Vector
+            None => Vec::new(),
         }
     }
 
-    fn _get_valid_move_sets(team: Team, board: Board) -> Vec<Vec<Move>> {
+    fn _get_possible_decisions(team: Team, board: Board) -> Vec<Decision> {
         let mut result = Vec::new();
         let moves = board.get_all_valid_moves(team);
         // println!("VALID MOVES: {:?}\r", moves);
@@ -29,18 +62,26 @@ impl Ai {
             if mv.is_jump() {
                 // Chain jumps
                 // println!("processing jump {}\r", mv);
-                result.append(&mut Self::_process_jump(vec![mv], new_board, &mv));
+                result.append(&mut Self::_process_jump(team, vec![mv], new_board, &mv));
             } else {
                 // println!("processing normal move {}\r", mv);
-                result.push(vec![mv]);
+                result.push(Decision {
+                    team: team,
+                    moves: vec![mv],
+                    board_state: new_board,
+                });
             }
         }
 
         result
     }
 
-    fn _process_jump(current_path: Vec<Move>, board: Board, jump: &Move) -> Vec<Vec<Move>> {
-        let mut result = vec![current_path.clone()];
+    fn _process_jump(team: Team, current_path: Vec<Move>, board: Board, jump: &Move) -> Vec<Decision> {
+        let mut result = vec![Decision {
+            team: team,
+            moves: current_path.clone(),
+            board_state: board.clone(),
+        }];
         let jumps = board.get_valid_jumps_for_piece_at(&jump.to);
         // println!("filtering... {:?}", jumps);
         for jump in jumps {
@@ -50,7 +91,7 @@ impl Ai {
             // Keep chaining
             let mut next_path = current_path.clone(); // TODO is there a one-liner for this?
             next_path.push(jump);
-            result.append(&mut Self::_process_jump(next_path, new_board, &jump));
+            result.append(&mut Self::_process_jump(team, next_path, new_board, &jump));
         }
 
         result

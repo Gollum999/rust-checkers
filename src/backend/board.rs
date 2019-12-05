@@ -7,6 +7,14 @@ pub enum Team {
     Light,
     Dark,
 }
+impl Team {
+    pub fn other(&self) -> Team {
+        match self {
+            Team::Light => Team::Dark,
+            Team::Dark => Team::Light,
+        }
+    }
+}
 #[derive(Copy, Clone, PartialEq, Eq, Debug)]
 pub enum PieceType {
     Man,
@@ -93,6 +101,20 @@ impl Board {
         add_piece(6, 7, Light);
 
         Board { pieces: pieces }
+    }
+
+    pub fn pieces_alive(&self, team: Team) -> usize {
+        self.pieces.values().filter(|piece| piece.team == team).count()
+    }
+
+    pub fn game_over(&self) -> bool {
+        let (light_alive, dark_alive) = self.pieces.values().fold((false, false), |result, piece| {
+            match piece.team {
+                Team::Light => (true, result.1),
+                Team::Dark  => (result.0, true),
+            }
+        });
+        !light_alive || !dark_alive
     }
 
     fn find_piece_square(&self, piece: &Piece) -> &Square {
