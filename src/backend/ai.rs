@@ -1,4 +1,5 @@
 use super::board::{Board, Move, PieceType, Team};
+use std::i32;
 
 struct Decision {
     pub team: Team,
@@ -19,7 +20,6 @@ impl Decision {
     }
 
     pub fn score_board_state(&self) -> i32 {
-        use std::i32;
         static GAME_WIN: i32 = i32::MAX;
         static GAME_LOSS: i32 = i32::MIN;
         static VALUE_MAN: i32 = 10;
@@ -43,12 +43,13 @@ impl Decision {
             })
     }
 
-    pub fn score_recursive(&mut self, depth: usize, is_max_player: bool) -> i32 {
+    pub fn score_recursive(&mut self, depth: usize, is_max_player: bool, mut alpha: i32, mut beta: i32) -> i32 {
         if self.score.is_some() {
             return self.score.unwrap();
         }
 
-        // println!("{:width$}score_recursive: depth: {}, team: {:?}, max player: {}", "", depth, self.team, is_max_player, width=5-depth);
+        // println!("{:width$}score_recursive: depth: {}, team: {:?}, max player: {}, alpha: {}, beta: {}",
+        //          "", depth, self.team, is_max_player, alpha, beta, width=5-depth);
         if depth == 0 {
             let score = self.cached_score_board_state();
             // println!("{:width$}score_recursive: hit max depth, returning {}", "", score, width=5-depth);
@@ -62,14 +63,34 @@ impl Decision {
         }
         for d in &mut enemy_decisions {
             // println!("{:width$}score_recursive scoring: {:?} {:?}", "", d.team, d.moves, width=5-depth);
-            d.score_recursive(depth - 1, !is_max_player);
+            d.score_recursive(depth - 1, !is_max_player, alpha, beta);
         }
 
-        let compare = match is_max_player {
-            true  => std::iter::Iterator::max_by_key,
-            false => std::iter::Iterator::min_by_key,
-        };
-        self.score = compare(enemy_decisions.iter(), |d: &&Decision| d.score).unwrap().score; // TODO why is && needed?
+        if is_max_player {
+            let mut score = i32::MIN;
+            for d in &enemy_decisions {
+                score = std::cmp::max(score, d.score.unwrap());
+                alpha = std::cmp::max(alpha, score);
+                // println!("{:width$}score_recursive checked: {} new score: {}, new alpha: {}", "", d.score.unwrap(), score, alpha, width=5-depth);
+                if alpha >= beta {
+                    // println!("{:width$}score_recursive beta cutoff: alpha {} >= beta {}", "", alpha, beta, width=5-depth);
+                    break;
+                }
+            }
+            self.score = Some(score);
+        } else {
+            let mut score = i32::MAX;
+            for d in &enemy_decisions {
+                score = std::cmp::min(score, d.score.unwrap());
+                beta = std::cmp::min(beta, score);
+                // println!("{:width$}score_recursive checked: {} new score: {}, new beta: {}", "", d.score.unwrap(), score, beta, width=5-depth);
+                if alpha >= beta {
+                    // println!("{:width$}score_recursive alpha cutoff: alpha {} >= beta {}", "", alpha, beta, width=5-depth);
+                    break;
+                }
+            }
+            self.score = Some(score);
+        }
 
         // println!("{:width$}score_recursive: depth: {}, team: {:?}, max player: {}, returning {}", "", depth, self.team, is_max_player, self.score.unwrap(), width=5-depth);
         self.score.unwrap()
@@ -83,19 +104,17 @@ impl Ai {
     pub fn get_next_moves(&self, board: Board) -> Vec<Move> {
         // println!("----------------------------------------");
         const MAX_DEPTH: usize = 4;
+        // const MAX_DEPTH: usize = 2;
         let depth = 0;
         let team = self.team;
         let mut my_decisions = Self::_get_possible_decisions(self.team, board);
-        // my_decisions.sort_by_cached_key(|d| {
-        //     d.score_recursive(MAX_DEPTH, true)
-        // }); // TODO If I handle caching myself, sort_by_key might be faster
         for d in &mut my_decisions {
             // println!("ROOT scoring: {:?} {:?}", d.team, d.moves);
-            d.score_recursive(MAX_DEPTH, true);
+            d.score_recursive(MAX_DEPTH, true, i32::MIN, i32::MAX);
         }
         my_decisions.sort_by_key(|d| d.score);
 
-        let dec = my_decisions.last().unwrap();
+        // let dec = my_decisions.last().unwrap();
         // println!("FINAL SCORE: {} ({:?})", dec.score.unwrap(), dec.moves);
 
         match my_decisions.last() {
