@@ -6,7 +6,7 @@ use super::super::channel; // TODO any way to clean this up?
 
 use std::sync::mpsc::RecvError;
 use std::thread;
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
 pub struct Game {
     args: Args,
@@ -65,22 +65,33 @@ impl Game {
     }
 
     fn process_ai(&mut self, ai: &Ai) -> Result<bool, RecvError> {
+        const AUTO_PLAY: bool = true;
+        const MIN_AUTO_PLAY_DELAY: Duration = Duration::from_millis(800);
+
+        let now = Instant::now();
         let next_moves = ai.get_next_moves(self.board.clone());
+        let time_spent_in_ai = now.elapsed();
+        log!(self, "Processing AI, elapsed: {:?}", time_spent_in_ai);
+
         if next_moves.is_empty() {
             return Ok(false); // TODO clean up
         }
+
         // log!(self, "next moves: {:?}", next_moves);
-        for mv in next_moves {
-            const AUTO_PLAY: bool = false;
+        for (idx, mv) in next_moves.iter().enumerate() {
             if AUTO_PLAY {
-                thread::sleep(Duration::from_millis(1000));
+                match MIN_AUTO_PLAY_DELAY.checked_sub(time_spent_in_ai) {
+                    Some(remaining_delay) => thread::sleep(remaining_delay),
+                    None if idx > 0 => thread::sleep(MIN_AUTO_PLAY_DELAY),
+                    _ => (),
+                };
             } else {
                 use std::io;
                 use std::io::Read;
                 let mut stdin = io::stdin();
                 let _ = stdin.read(&mut [0u8]).unwrap();
             }
-            log!(self, "Processing AI, next move: {}", mv);
+            log!(self, "AI taking move: {}", mv);
             self.board.apply_move(&mv);
             self.update_frontend();
         }

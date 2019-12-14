@@ -4,9 +4,14 @@ struct Decision {
     pub team: Team,
     pub moves: Vec<Move>,
     pub board_state: Board,
+    pub score: Option<i32>,
 }
 impl Decision {
-    pub fn score(&self) -> i32 {
+    pub fn score_board_state(&mut self) -> i32 {
+        if self.score.is_some() {
+            return self.score.unwrap();
+        }
+
         use std::i32;
         static GAME_WIN: i32 = i32::MAX;
         static GAME_LOSS: i32 = i32::MIN;
@@ -20,17 +25,52 @@ impl Decision {
             return GAME_WIN;
         }
 
-        let score = self.board_state.get_pieces()
-                        .values()
-                        .fold(0, |score, piece| {
-                            let multiplier = if piece.team == self.team { 1 } else { -1 };
-                            match piece.piece_type {
-                                PieceType::Man  => score + multiplier * VALUE_MAN,
-                                PieceType::King => score + multiplier * VALUE_KING,
-                            }
-                        });
+        self.score = Some(self.board_state.get_pieces()
+                              .values()
+                              .fold(0, |score, piece| {
+                                  let multiplier = if piece.team == self.team { 1 } else { -1 };
+                                  match piece.piece_type {
+                                      PieceType::Man  => score + multiplier * VALUE_MAN,
+                                      PieceType::King => score + multiplier * VALUE_KING,
+                                  }
+                              }));
         // println!("Score for {:?}: {} ({:?})", self.team, score, self.moves);
-        score
+        self.score.unwrap()
+    }
+
+    pub fn score_recursive(&mut self, depth: usize, is_max_player: bool) -> i32 {
+        if self.score.is_some() {
+            return self.score.unwrap();
+        }
+
+        // println!("{:width$}score_recursive: depth: {}, team: {:?}, max player: {}", "", depth, self.team, is_max_player, width=5-depth);
+        if depth == 0 {
+            let score = self.score_board_state();
+            // println!("{:width$}score_recursive: hit max depth, returning {}", "", score, width=5-depth);
+            return score;
+        }
+        let mut enemy_decisions = Ai::_get_possible_decisions(self.team.other(), self.board_state.clone());
+        if enemy_decisions.is_empty() {
+            let score = self.score_board_state();
+            // println!("{:width$}score_recursive: enemy has no moves, returning {}", "", score, width=5-depth);
+            return score;
+        }
+        // enemy_decisions.sort_by_cached_key(|&mut d| {
+        //     d.score_recursive(depth - 1, !is_max_player)
+        // }); // TODO If I handle caching myself, sort_by_key might be faster
+        for d in &mut enemy_decisions {
+            // println!("{:width$}score_recursive scoring: {:?} {:?}", "", d.team, d.moves, width=5-depth);
+            d.score_recursive(depth - 1, !is_max_player);
+        }
+
+        let compare = match is_max_player {
+            true  => std::iter::Iterator::max_by_key,
+            false => std::iter::Iterator::min_by_key,
+        };
+        self.score = compare(enemy_decisions.iter(), |d: &&Decision| d.score).unwrap().score; // TODO why is && needed?
+
+        // println!("{:width$}score_recursive: depth: {}, team: {:?}, max player: {}, returning {}", "", depth, self.team, is_max_player, self.score.unwrap(), width=5-depth);
+        self.score.unwrap()
     }
 }
 
@@ -39,14 +79,25 @@ pub struct Ai {
 }
 impl Ai {
     pub fn get_next_moves(&self, board: Board) -> Vec<Move> {
-        let mut decisions = Self::_get_possible_decisions(self.team, board);
+        // println!("----------------------------------------");
+        const MAX_DEPTH: usize = 4;
+        let depth = 0;
+        let team = self.team;
+        let mut my_decisions = Self::_get_possible_decisions(self.team, board);
+        // my_decisions.sort_by_cached_key(|d| {
+        //     d.score_recursive(MAX_DEPTH, true)
+        // }); // TODO If I handle caching myself, sort_by_key might be faster
+        for d in &mut my_decisions {
+            // println!("ROOT scoring: {:?} {:?}", d.team, d.moves);
+            d.score_recursive(MAX_DEPTH, true);
+        }
+        my_decisions.sort_by_key(|d| d.score);
 
-        decisions.sort_by_cached_key(Decision::score);
-        // for d in &decisions {
-        //     println!("  decision: {:?} {} ({:?})", d.team, d.score(), d.moves);
-        // }
-        match decisions.last() {
-            Some(decision) => decision.moves.clone(), // TODO I think this clone is necessary because I can't move out of a reference to an element of a Vector
+        let dec = my_decisions.last().unwrap();
+        // println!("FINAL SCORE: {} ({:?})", dec.score.unwrap(), dec.moves);
+
+        match my_decisions.last() {
+            Some(decision) => decision.moves.clone(),
             None => Vec::new(),
         }
     }
@@ -69,6 +120,7 @@ impl Ai {
                     team: team,
                     moves: vec![mv],
                     board_state: new_board,
+                    score: None,
                 });
             }
         }
@@ -81,6 +133,7 @@ impl Ai {
             team: team,
             moves: current_path.clone(),
             board_state: board.clone(),
+            score: None,
         }];
         let jumps = board.get_valid_jumps_for_piece_at(&jump.to);
         // println!("filtering... {:?}", jumps);
