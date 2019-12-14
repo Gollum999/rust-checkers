@@ -7,11 +7,18 @@ struct Decision {
     pub score: Option<i32>,
 }
 impl Decision {
-    pub fn score_board_state(&mut self) -> i32 {
-        if self.score.is_some() {
-            return self.score.unwrap();
+    pub fn cached_score_board_state(&mut self) -> i32 {
+        match self.score {
+            Some(score) => score,
+            None => {
+                self.score = Some(self.score_board_state());
+                // println!("Score for {:?}: {} ({:?})", self.team, score, self.moves);
+                self.score.unwrap()
+            },
         }
+    }
 
+    pub fn score_board_state(&self) -> i32 {
         use std::i32;
         static GAME_WIN: i32 = i32::MAX;
         static GAME_LOSS: i32 = i32::MIN;
@@ -25,17 +32,15 @@ impl Decision {
             return GAME_WIN;
         }
 
-        self.score = Some(self.board_state.get_pieces()
-                              .values()
-                              .fold(0, |score, piece| {
-                                  let multiplier = if piece.team == self.team { 1 } else { -1 };
-                                  match piece.piece_type {
-                                      PieceType::Man  => score + multiplier * VALUE_MAN,
-                                      PieceType::King => score + multiplier * VALUE_KING,
-                                  }
-                              }));
-        // println!("Score for {:?}: {} ({:?})", self.team, score, self.moves);
-        self.score.unwrap()
+        self.board_state.get_pieces()
+            .values()
+            .fold(0, |score, piece| {
+                let multiplier = if piece.team == self.team { 1 } else { -1 };
+                match piece.piece_type {
+                    PieceType::Man  => score + multiplier * VALUE_MAN,
+                    PieceType::King => score + multiplier * VALUE_KING,
+                }
+            })
     }
 
     pub fn score_recursive(&mut self, depth: usize, is_max_player: bool) -> i32 {
@@ -45,19 +50,16 @@ impl Decision {
 
         // println!("{:width$}score_recursive: depth: {}, team: {:?}, max player: {}", "", depth, self.team, is_max_player, width=5-depth);
         if depth == 0 {
-            let score = self.score_board_state();
+            let score = self.cached_score_board_state();
             // println!("{:width$}score_recursive: hit max depth, returning {}", "", score, width=5-depth);
             return score;
         }
         let mut enemy_decisions = Ai::_get_possible_decisions(self.team.other(), self.board_state.clone());
         if enemy_decisions.is_empty() {
-            let score = self.score_board_state();
+            let score = self.cached_score_board_state();
             // println!("{:width$}score_recursive: enemy has no moves, returning {}", "", score, width=5-depth);
             return score;
         }
-        // enemy_decisions.sort_by_cached_key(|&mut d| {
-        //     d.score_recursive(depth - 1, !is_max_player)
-        // }); // TODO If I handle caching myself, sort_by_key might be faster
         for d in &mut enemy_decisions {
             // println!("{:width$}score_recursive scoring: {:?} {:?}", "", d.team, d.moves, width=5-depth);
             d.score_recursive(depth - 1, !is_max_player);
