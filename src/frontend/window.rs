@@ -135,6 +135,7 @@ impl BoardView {
 
     // TODO if selecting move, limit to valid moves?
     fn move_cursor(&mut self, dir: Input) {
+        // println!("move_cursor {:?}", dir);
         match dir {
             Input::KeyLeft => self.cursor.x -= 2,
             Input::KeyRight => self.cursor.x += 2,
@@ -162,6 +163,7 @@ impl BoardView {
     }
 
     fn do_action(&mut self) {
+        // println!("do_action");
         match self.state {
             State::Waiting => (),
             State::ChoosingPiece => {
@@ -253,16 +255,14 @@ impl Window {
 
     fn process_input(&mut self) -> bool {
         let key = self.main_window.getch();
+        const ESC: char = 27 as char;
         match key {
             None => (),
             Some(key) => match key {
                 Input::KeyLeft | Input::KeyRight | Input::KeyUp | Input::KeyDown => self.board.move_cursor(key),
-                Input::KeyEnter | Input::Character(' ') => self.board.do_action(),
-                Input::Character('q') | Input::KeyDC => return false,
-                Input::KeyClose => println!("CLOSE"), // TODO figure out which is escape key
-                Input::KeyExit => println!("EXIT"),
-                Input::KeyReset => println!("RESET"),
-                Input::Unknown(27) => println!("27"),
+                Input::KeyEnter | Input::Character('\n') | Input::Character(' ') => self.board.do_action(),
+                Input::Character('q') | Input::KeyDC | Input::Character(ESC) => return false,
+                // i => log!(self.main_window, "unknown... {:?}", i),
                 _ => (),
             },
         };
