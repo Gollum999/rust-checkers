@@ -14,7 +14,7 @@ fn main() {
     let (backend_endpoint, frontend_endpoint) = channel::make_two_way_channel();
 
     let render_thread = thread::spawn(move || {
-        let window = frontend::Window::new(frontend_args, frontend_endpoint).unwrap();
+        let mut window = frontend::Window::new(frontend_args, frontend_endpoint).unwrap();
         window.run();
     });
 

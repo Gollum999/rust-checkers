@@ -9,3 +9,4 @@ pub use board::Piece;
 pub use board::Square;
 pub use board::Team;
 pub use game::Game;
+pub use player::Player;

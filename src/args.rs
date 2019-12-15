@@ -1,7 +1,7 @@
 use clap::{Arg, App};
 
 arg_enum! {
-    #[derive(Debug)]
+    #[derive(Clone, Debug)]
     pub enum ColorScheme {
         WhiteRed,
         RedBlack,
@@ -9,11 +9,11 @@ arg_enum! {
     }
 }
 
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub struct BackendArgs {
 }
 
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub struct FrontendArgs {
     pub ascii: bool,
     pub color_scheme: ColorScheme,

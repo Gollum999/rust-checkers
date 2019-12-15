@@ -52,6 +52,7 @@ impl Game {
                 _ => (),
             };
         }
+        // println!("Game over!");
         log!(self, "Game over!");
     }
 
@@ -99,6 +100,6 @@ impl Game {
     }
 
     fn update_frontend(&self) {
-        self.frontend_channel.tx.send(channel::Message::BoardState(self.board.get_pieces().clone())).expect("Could not send board state"); // TODO better handling
+        self.frontend_channel.tx.send(channel::Message::BoardState(self.board.clone())).expect("Could not send board state"); // TODO better handling
     }
 }
