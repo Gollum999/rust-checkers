@@ -2,7 +2,7 @@ use super::ai::Ai;
 use super::board::{Board, Team};
 use super::player::Player;
 use super::super::args::BackendArgs as Args; // TODO any way to clean this up?
-use super::super::channel; // TODO any way to clean this up?
+use super::super::channel::{BackendEndpoint, BackToFrontMessage}; // TODO any way to clean this up?
 
 use std::sync::mpsc::RecvError;
 use std::thread;
@@ -10,7 +10,7 @@ use std::time::{Duration, Instant};
 
 pub struct Game {
     args: Args,
-    frontend_channel: channel::Endpoint,
+    frontend_channel: BackendEndpoint,
     board: Board,
     // score: [i8; 2],
 }
@@ -18,12 +18,12 @@ pub struct Game {
 macro_rules! log {
     ( $self:expr, $( $arg:expr ),* ) => {
         // TODO don't panic here
-        $self.frontend_channel.tx.send(channel::Message::Log{ msg: format!($($arg),*) }).expect("Failed to log");
+        $self.frontend_channel.tx.send(BackToFrontMessage::Log{ msg: format!($($arg),*) }).expect("Failed to log");
     };
 }
 
 impl Game {
-    pub fn new(args: Args, frontend_channel: channel::Endpoint) -> Game {
+    pub fn new(args: Args, frontend_channel: BackendEndpoint) -> Game {
         Game {
             args: args,
             frontend_channel: frontend_channel,
@@ -100,6 +100,6 @@ impl Game {
     }
 
     fn update_frontend(&self) {
-        self.frontend_channel.tx.send(channel::Message::BoardState(self.board.clone())).expect("Could not send board state"); // TODO better handling
+        self.frontend_channel.tx.send(BackToFrontMessage::BoardState(self.board.clone())).expect("Could not send board state"); // TODO better handling
     }
 }

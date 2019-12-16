@@ -1,27 +1,33 @@
 use std::sync::mpsc;
-use super::backend::Board;
+use super::backend::{Board, Square};
 
-pub struct Endpoint {
-    pub tx: mpsc::Sender<Message>,
-    pub rx: mpsc::Receiver<Message>,
+pub struct Endpoint<TxMsg, RxMsg> {
+    pub tx: mpsc::Sender<TxMsg>,
+    pub rx: mpsc::Receiver<RxMsg>,
 }
+pub type BackendEndpoint  = Endpoint<BackToFrontMessage, FrontToBackMessage>;
+pub type FrontendEndpoint = Endpoint<FrontToBackMessage, BackToFrontMessage>;
 
-pub fn make_two_way_channel() -> (Endpoint, Endpoint) {
+pub fn make_two_way_channel() -> (BackendEndpoint, FrontendEndpoint) {
     let (tx1, rx1) = mpsc::channel();
     let (tx2, rx2) = mpsc::channel();
 
-    (Endpoint{ tx: tx1, rx: rx2 }, Endpoint{ tx: tx2, rx: rx1 })
+    (BackendEndpoint{ tx: tx1, rx: rx2 }, FrontendEndpoint{ tx: tx2, rx: rx1 })
 }
 
-pub enum Message {
+pub enum BackToFrontMessage {
     Log{ msg: String },
     BoardState(Board),
 }
-impl std::fmt::Debug for Message {
+impl std::fmt::Debug for BackToFrontMessage {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         match self {
-            Message::BoardState(_) => write!(f, "Message::BoardState(...)"),
-            _                      => write!(f, "{:?}", self),
+            BackToFrontMessage::BoardState(_) => write!(f, "BackToFrontMessage::BoardState(...)"),
+            _                                 => write!(f, "{:?}", self),
         }
     }
+}
+#[derive(Debug)]
+pub enum FrontToBackMessage {
+    Move{ from: Square, to: Square },
 }

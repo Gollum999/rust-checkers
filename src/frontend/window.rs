@@ -1,10 +1,9 @@
 extern crate pancurses;
 
-use std::collections::HashMap;
 use super::super::args; // TODO any way to clean this up?
 use args::FrontendArgs as Args;
 use super::super::backend;
-use super::super::channel; // TODO any way to clean this up?
+use super::super::channel::FrontendEndpoint; // TODO any way to clean this up?
 use backend::{Board, Piece, PieceType, Player, Square, Team}; // TODO this is a bit messy too
 
 use pancurses::{
@@ -146,7 +145,6 @@ impl BoardView {
                     self.cursor.x += 1;
                 }
                 self.cursor.y -= 1;
-
             },
             Input::KeyDown => {
                 if self.cursor.x % 2 == 0 {
@@ -224,12 +222,12 @@ impl BoardView {
 pub struct Window {
     args: Args,
 
-    backend_channel: channel::Endpoint,
+    backend_channel: FrontendEndpoint,
     main_window: pancurses::Window,
     board: BoardView,
 }
 impl Window {
-    pub fn new(args: Args, backend_channel: channel::Endpoint) -> Result<Window, WindowError> {
+    pub fn new(args: Args, backend_channel: FrontendEndpoint) -> Result<Window, WindowError> {
         let main_window = initscr();
         let sub_window = main_window.subwin(2 + Board::SIZE as i32, 2 + Board::SIZE as i32 * SQUARE_WIDTH as i32, 0, 0)?;
         let w = Window {
@@ -273,9 +271,10 @@ impl Window {
     pub fn run(&mut self) {
         loop {
             let msg = self.backend_channel.rx.recv().unwrap();
+            use super::super::channel::BackToFrontMessage as Msg;
             match msg {
-                channel::Message::Log{ msg: s } => log!(self.main_window, "{}", s),
-                channel::Message::BoardState(board) => self.board.draw(board),
+                Msg::Log{ msg: s } => log!(self.main_window, "{}", s),
+                Msg::BoardState(board) => self.board.draw(board),
             };
 
             // self.main_window.addstr("○●◯◖◗⬤⭗⭕⭘🔴🔵🞉🞊♛♕♔♚👑⛀⛂⛁⛃");
