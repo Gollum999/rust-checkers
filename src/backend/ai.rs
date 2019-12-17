@@ -105,8 +105,6 @@ impl Ai {
         // println!("----------------------------------------");
         const MAX_DEPTH: usize = 4;
         // const MAX_DEPTH: usize = 2;
-        let depth = 0;
-        let team = self.team;
         let mut my_decisions = Self::_get_possible_decisions(self.team, board);
         for d in &mut my_decisions {
             // println!("ROOT scoring: {:?} {:?}", d.team, d.moves);

@@ -6,22 +6,15 @@ use super::super::backend;
 use super::super::channel::FrontendEndpoint; // TODO any way to clean this up?
 use backend::{Board, Piece, PieceType, Player, Square, Team}; // TODO this is a bit messy too
 
+use std::cell::RefCell;
+use std::rc::Rc;
+
 use pancurses::{
+    A_BLINK, A_NORMAL,
     ACS_HLINE, ACS_VLINE,
     COLOR_BLACK, COLOR_RED, COLOR_WHITE,
     endwin, initscr, init_pair, Input, noecho, start_color,
 };
-
-macro_rules! log {
-    ( $window:expr, $( $arg:expr ),* ) => {{
-        let old_pos = Point{ x: $window.get_cur_x(), y: $window.get_cur_y() };
-        const LOG_POS: Point = Point{ x: 1, y: 11 };
-        $window.mv(LOG_POS.y, LOG_POS.x);
-        $window.insertln();
-        $window.addstr(format!($($arg),*));
-        $window.mv(old_pos.y, old_pos.x);
-    }};
-}
 
 #[derive(Debug)]
 pub struct WindowError {
@@ -105,6 +98,18 @@ impl Menu {
     }
 }
 
+struct LogView {
+    window: pancurses::Window,
+}
+macro_rules! log {
+    ( $log_view:expr, $( $arg:expr ),* ) => {{
+        let log = $log_view.borrow_mut();
+        log.window.mv(1, 1);
+        log.window.insertln();
+        log.window.addstr(format!($($arg),*));
+    }};
+}
+
 enum State {
     Waiting,
     ChoosingPiece,
@@ -116,14 +121,16 @@ const SQUARE_WIDTH: usize = 3;
 struct BoardView {
     args: Args,
     window: pancurses::Window,
+    log: Rc<RefCell<LogView>>, // TODO not sure if this is the best way to do this
     cursor: Square,
     state: State,
 }
 impl BoardView {
-    fn new(args: Args, window: pancurses::Window) -> BoardView {
+    fn new(args: Args, window: pancurses::Window, log: Rc<RefCell<LogView>>) -> BoardView {
         let board = BoardView {
             args: args,
             window: window,
+            log: log,
             cursor: Square{ x: 0, y: 0 },
             state: State::Waiting,
         };
@@ -134,7 +141,6 @@ impl BoardView {
 
     // TODO if selecting move, limit to valid moves?
     fn move_cursor(&mut self, dir: Input) {
-        // println!("move_cursor {:?}", dir);
         match dir {
             Input::KeyLeft => self.cursor.x -= 2,
             Input::KeyRight => self.cursor.x += 2,
@@ -158,6 +164,7 @@ impl BoardView {
         }
         self.cursor.x = self.cursor.x % Board::SIZE;
         self.cursor.y = self.cursor.y % Board::SIZE;
+        log!(self.log, "move_cursor {:?}, new pos = {}", dir, self.cursor);
     }
 
     fn do_action(&mut self) {
@@ -165,12 +172,12 @@ impl BoardView {
         match self.state {
             State::Waiting => (),
             State::ChoosingPiece => {
-                log!(self.window, "choosing piece.."); // TODO
+                log!(self.log, "choosing piece.."); // TODO
                 // let piece = self.board.get_piece_at(self.cursor);
                 // self.state = State::ChoosingMove(piece);
             },
             State::ChoosingMove(piece) => {
-                log!(self.window, "choosing move.."); // TODO
+                log!(self.log, "choosing move.."); // TODO
                 // self.send_msg(Message::Move{ from: piece.pos(), to: self.cursor });
                 // if !move.is_jump() || self.board.get_jumps_for(piece).is_empty() {
                 //     self.state = State::Waiting;
@@ -224,17 +231,35 @@ pub struct Window {
 
     backend_channel: FrontendEndpoint,
     main_window: pancurses::Window,
+
+    log: Rc<RefCell<LogView>>,
     board: BoardView,
 }
 impl Window {
     pub fn new(args: Args, backend_channel: FrontendEndpoint) -> Result<Window, WindowError> {
         let main_window = initscr();
-        let sub_window = main_window.subwin(2 + Board::SIZE as i32, 2 + Board::SIZE as i32 * SQUARE_WIDTH as i32, 0, 0)?;
+        let board_window = main_window.subwin(
+            2 + Board::SIZE as i32,
+            2 + Board::SIZE as i32 * SQUARE_WIDTH as i32,
+            0,
+            0,
+        )?;
+        let log_window = main_window.subwin(
+            main_window.get_max_y() - board_window.get_max_y(),
+            main_window.get_max_x(),
+            board_window.get_max_y(),
+            0,
+        )?;
+        let log = LogView {
+            window: log_window,
+        };
+        let log_rc = Rc::new(RefCell::new(log));
         let w = Window {
             args: args.clone(),
             backend_channel: backend_channel,
             main_window: main_window,
-            board: BoardView::new(args, sub_window),
+            board: BoardView::new(args, board_window, log_rc.clone()),
+            log: log_rc,
         };
         w.main_window.keypad(true); // Allow control characters
         w.main_window.nodelay(true); // Input is non-blocking
@@ -273,11 +298,13 @@ impl Window {
             let msg = self.backend_channel.rx.recv().unwrap();
             use super::super::channel::BackToFrontMessage as Msg;
             match msg {
-                Msg::Log{ msg: s } => log!(self.main_window, "{}", s),
+                Msg::Log{ msg: s } => log!(self.log, "{}", s),
                 Msg::BoardState(board) => self.board.draw(board),
             };
 
             // self.main_window.addstr("○●◯◖◗⬤⭗⭕⭘🔴🔵🞉🞊♛♕♔♚👑⛀⛂⛁⛃");
+            self.log.borrow_mut().window.draw_box(ACS_VLINE(), ACS_HLINE()); // TODO temp?
+            self.log.borrow_mut().window.refresh();
             self.main_window.refresh();
 
             if !self.process_input() {
