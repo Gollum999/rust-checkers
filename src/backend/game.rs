@@ -1,6 +1,6 @@
 use super::ai::Ai;
 use super::args::Args;
-use super::board::{Board, Team};
+use super::board::{Board, Move, Square, Team};
 use super::player::Player;
 
 use crate::channel::{BackendEndpoint, BackToFrontMessage, FrontToBackMessage};
@@ -60,29 +60,39 @@ impl Game {
 
     fn process_human(&mut self, player: &Player, team: Team) -> Result<bool, RecvError> {
         self.request_move_from_frontend(team);
+
+        self.handle_move_msg_from_frontend(player, team)
+    }
+
+    fn handle_move_msg_from_frontend(&mut self, player: &Player, team: Team) -> Result<bool, RecvError> {
         let msg = self.frontend_channel.rx.recv()?;
         let mv = match msg {
             FrontToBackMessage::Move(mv) => mv,
+            FrontToBackMessage::CancelMove => return Ok(true),
             msg => panic!("Unexpected message from frontend: {:?}", msg),
         };
 
         match self.board.get_piece_at(&mv.from) {
             Some(piece) if piece.team == team => { // TODO let board handle this logic, plus check other validity
                 log!(self, "Human taking move: {}", mv);
-                self.board.apply_move(&mv);
-                self.update_frontend();
+                self.apply_move(&mv);
 
-                // TODO do I need to handle case where player has no valid moves?  (seems like outer loop should catch this)
-                if mv.is_jump() && !self.board.get_valid_jumps_for_piece_at(&mv.to).is_empty() {
-                    // TODO this only jumps should be accepted here, need special logic
-                    return self.process_human(player, team);
-                    // TODO need to be able to signify "stop jumping"... use same path as move cancel (need a message to tell backend to continue?)
+                // TODO do I need to handle case where player has no valid moves?  (seems like I shouldn't request move in the first place)
+                let jumps = self.board.get_valid_jumps_for_piece_at(&mv.to);
+                if mv.is_jump() && !jumps.is_empty() {
+                    self.request_jump_from_frontend(team, mv.to, jumps);
+                    return self.handle_move_msg_from_frontend(player, team);
                 }
             },
             _ => panic!("Frontend sent bad move: {}", mv),
         }
 
         Ok(true)
+    }
+
+    fn apply_move(&mut self, mv: &Move) {
+        self.board.apply_move(&mv);
+        self.update_frontend();
     }
 
     fn process_ai(&mut self, ai: &Ai) -> Result<bool, RecvError> {
@@ -122,6 +132,11 @@ impl Game {
     fn request_move_from_frontend(&self, team: Team) {
         log!(self, "Requesting move for team {:?}...", team);
         self.frontend_channel.tx.send(BackToFrontMessage::RequestMove(team)).expect("Could not send RequestMove"); // TODO better handling
+    }
+
+    fn request_jump_from_frontend(&self, team: Team, square: Square, valid_moves: Vec<Move>) {
+        log!(self, "Requesting jump for team {:?}, square {:?}, one of {:?}...", team, square, valid_moves);
+        self.frontend_channel.tx.send(BackToFrontMessage::RequestJump(team, square, valid_moves)).expect("Could not send RequestJump"); // TODO better handling
     }
 
     fn update_frontend(&self) {

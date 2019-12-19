@@ -163,6 +163,7 @@ impl Window {
                         Msg::Log{ msg: s } => log!(self.log, "{}", s),
                         Msg::BoardState(board) => self.board.set_board_state(board),
                         Msg::RequestMove(team) => self.board.start_selecting_piece(team),
+                        Msg::RequestJump(team, square, valid_moves) => self.board.continue_jumping(team, square, valid_moves),
                     };
                 },
                 Err(err) => match err {

@@ -17,7 +17,7 @@ use pancurses::{
 enum State {
     Waiting,
     ChoosingPiece(Team),
-    ChoosingMove(Team, Square, Vec<Move>),
+    ChoosingMove(Team, Square, Vec<Move>, bool),
 }
 
 pub const SQUARE_WIDTH: usize = 3;
@@ -56,6 +56,10 @@ impl BoardView {
 
     pub fn start_selecting_piece(&mut self, team: Team) {
         self.state = State::ChoosingPiece(team);
+    }
+
+    pub fn continue_jumping(&mut self, team: Team, square: Square, valid_moves: Vec<Move>) {
+        self.state = State::ChoosingMove(team, square, valid_moves, true);
     }
 
     // TODO if selecting move, limit to valid moves?
@@ -99,31 +103,44 @@ impl BoardView {
                             return;
                         }
                         log!(self.log, "valid moves: {:?}", valid_moves);
-                        self.state = State::ChoosingMove(*team, self.cursor, valid_moves);
+                        self.state = State::ChoosingMove(*team, self.cursor, valid_moves, false);
                     },
                     Some(_) => log!(self.log, "Piece at {} not owned by {:?}", self.cursor, team),
                     None => (),
                 };
             },
-            State::ChoosingMove(team, piece_pos, valid_moves) => {
-                use crate::channel::FrontToBackMessage as Msg;
-                log!(self.log, "choosing move.. {:?}", valid_moves); // TODO
+            State::ChoosingMove(team, piece_pos, valid_moves, only_jumps) => {
+                log!(self.log, "choosing move.. {:?} {:?}", valid_moves, only_jumps); // TODO
                 if self.cursor == *piece_pos {
                     // Cancel move
-                    self.state = State::ChoosingPiece(*team); // TODO return new state?
-                    log!(self.log, "Move canceled");
+                    if *only_jumps {
+                        log!(self.log, "Jump canceled");
+                        self.state = State::Waiting;
+                        self.send_cancel_move_to_backend();
+                    } else {
+                        log!(self.log, "Move canceled");
+                        self.state = State::ChoosingPiece(*team); // TODO return new state?
+                    }
                     return;
                 }
                 let mv = Move{ from: *piece_pos, to: self.cursor };
                 if valid_moves.contains(&mv) {
                     log!(self.log, "sending move {:?}", mv);
-                    self.send_msg(Msg::Move(mv));
+                    self.send_move_to_backend(mv);
                     self.state = State::Waiting;
                 } else {
                     log!(self.log, "Illegal move {}", mv)
                 }
             },
         }
+    }
+
+    fn send_cancel_move_to_backend(&self) {
+        self.send_msg(crate::channel::FrontToBackMessage::CancelMove);
+    }
+
+    fn send_move_to_backend(&self, mv: Move) {
+        self.send_msg(crate::channel::FrontToBackMessage::Move(mv));
     }
 
     fn send_msg(&self, msg: crate::channel::FrontToBackMessage) {

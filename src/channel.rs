@@ -19,6 +19,7 @@ pub enum BackToFrontMessage {
     Log{ msg: String },
     BoardState(Board),
     RequestMove(Team),
+    RequestJump(Team, Square, Vec<Move>),
 }
 impl std::fmt::Debug for BackToFrontMessage {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
@@ -31,4 +32,5 @@ impl std::fmt::Debug for BackToFrontMessage {
 #[derive(Debug)]
 pub enum FrontToBackMessage {
     Move(Move),
+    CancelMove,
 }
