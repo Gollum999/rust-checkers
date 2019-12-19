@@ -90,46 +90,51 @@ impl BoardView {
     }
 
     pub fn do_action(&mut self) {
-        // println!("do_action");
-        match &mut self.state {
-            State::Waiting => (),
+        match self.process_state() {
+            Some(new_state) => self.state = new_state,
+            None => (),
+        }
+    }
+
+    fn process_state(&self) -> Option<State> {
+        match &self.state {
+            State::Waiting => None,
             State::ChoosingPiece(team) => {
-                log!(self.log, "choosing piece.. {:?}", team); // TODO
+                // log!(self.log, "choosing piece.. {:?}", team);
                 match self.board.get_piece_at(&self.cursor) {
                     Some(piece) if piece.team == *team => {
                         let valid_moves = self.board.get_valid_moves_for_piece_at(&self.cursor);
                         if valid_moves.is_empty() {
-                            log!(self.log, "Piece at {} has no valid moves", self.cursor);
-                            return;
+                            // log!(self.log, "Piece at {} has no valid moves", self.cursor);
+                            return None;
                         }
-                        log!(self.log, "valid moves: {:?}", valid_moves);
-                        self.state = State::ChoosingMove(*team, self.cursor, valid_moves, false);
+                        // log!(self.log, "valid moves: {:?}", valid_moves);
+                        return Some(State::ChoosingMove(*team, self.cursor, valid_moves, false));
                     },
-                    Some(_) => log!(self.log, "Piece at {} not owned by {:?}", self.cursor, team),
-                    None => (),
+                    _ => return None,
                 };
             },
             State::ChoosingMove(team, piece_pos, valid_moves, only_jumps) => {
-                log!(self.log, "choosing move.. {:?} {:?}", valid_moves, only_jumps); // TODO
+                // log!(self.log, "choosing move.. {:?} {:?}", valid_moves, only_jumps);
                 if self.cursor == *piece_pos {
                     // Cancel move
                     if *only_jumps {
                         log!(self.log, "Jump canceled");
-                        self.state = State::Waiting;
                         self.send_cancel_move_to_backend();
+                        return Some(State::Waiting);
                     } else {
                         log!(self.log, "Move canceled");
-                        self.state = State::ChoosingPiece(*team); // TODO return new state?
+                        return Some(State::ChoosingPiece(*team));
                     }
-                    return;
                 }
                 let mv = Move{ from: *piece_pos, to: self.cursor };
                 if valid_moves.contains(&mv) {
-                    log!(self.log, "sending move {:?}", mv);
+                    // log!(self.log, "sending move {:?}", mv);
                     self.send_move_to_backend(mv);
-                    self.state = State::Waiting;
+                    return Some(State::Waiting);
                 } else {
-                    log!(self.log, "Illegal move {}", mv)
+                    log!(self.log, "Illegal move {}", mv);
+                    return None;
                 }
             },
         }

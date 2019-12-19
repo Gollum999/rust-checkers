@@ -74,7 +74,7 @@ impl Game {
 
         match self.board.get_piece_at(&mv.from) {
             Some(piece) if piece.team == team => { // TODO let board handle this logic, plus check other validity
-                log!(self, "Human taking move: {}", mv);
+                log!(self, "Human ({:?}) taking move: {}", team, mv);
                 self.apply_move(&mv);
 
                 // TODO do I need to handle case where player has no valid moves?  (seems like I shouldn't request move in the first place)
@@ -122,7 +122,7 @@ impl Game {
                 let mut stdin = io::stdin();
                 let _ = stdin.read(&mut [0u8]).unwrap();
             }
-            log!(self, "AI taking move: {}", mv);
+            log!(self, "AI ({:?}) taking move: {}", ai.team, mv);
             self.board.apply_move(&mv);
             self.update_frontend();
         }
@@ -130,12 +130,12 @@ impl Game {
     }
 
     fn request_move_from_frontend(&self, team: Team) {
-        log!(self, "Requesting move for team {:?}...", team);
+        // log!(self, "Requesting move for team {:?}...", team);
         self.frontend_channel.tx.send(BackToFrontMessage::RequestMove(team)).expect("Could not send RequestMove"); // TODO better handling
     }
 
     fn request_jump_from_frontend(&self, team: Team, square: Square, valid_moves: Vec<Move>) {
-        log!(self, "Requesting jump for team {:?}, square {:?}, one of {:?}...", team, square, valid_moves);
+        // log!(self, "Requesting jump for team {:?}, square {:?}, one of {:?}...", team, square, valid_moves);
         self.frontend_channel.tx.send(BackToFrontMessage::RequestJump(team, square, valid_moves)).expect("Could not send RequestJump"); // TODO better handling
     }
 
