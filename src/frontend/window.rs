@@ -87,7 +87,7 @@ impl Menu {
 pub struct Window {
     args: Args,
 
-    backend_channel: FrontendEndpoint,
+    backend_channel: Rc<RefCell<FrontendEndpoint>>,
     main_window: pancurses::Window,
 
     log: Rc<RefCell<LogView>>,
@@ -111,13 +111,14 @@ impl Window {
         let log = LogView {
             window: log_window,
         };
+        let channel = Rc::new(RefCell::new(backend_channel));
         let log_rc = Rc::new(RefCell::new(log));
         let w = Window {
             args: args.clone(),
-            backend_channel: backend_channel,
             main_window: main_window,
-            board: BoardView::new(args, board_window, log_rc.clone()),
+            board: BoardView::new(args, board_window, log_rc.clone(), channel.clone()),
             log: log_rc,
+            backend_channel: channel,
         };
         w.main_window.keypad(true); // Allow control characters
         w.main_window.nodelay(true); // Input is non-blocking
@@ -155,12 +156,13 @@ impl Window {
     pub fn run(&mut self) {
         use crate::channel::BackToFrontMessage as Msg;
         loop {
-            let msg = self.backend_channel.rx.try_recv();
+            let msg = self.backend_channel.borrow_mut().rx.try_recv();
             match msg {
                 Ok(msg) => {
                     match msg {
                         Msg::Log{ msg: s } => log!(self.log, "{}", s),
                         Msg::BoardState(board) => self.board.set_board_state(board),
+                        Msg::RequestMove(team) => self.board.start_selecting_piece(team),
                     };
                 },
                 Err(err) => match err {
@@ -178,6 +180,8 @@ impl Window {
             if !self.process_input() {
                 break;
             }
+
+            std::thread::sleep(std::time::Duration::from_millis(10)); // Throttle to keep my laptop from melting
         }
         // println!("DONE");
         endwin();

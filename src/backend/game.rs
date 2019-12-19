@@ -3,7 +3,7 @@ use super::args::Args;
 use super::board::{Board, Team};
 use super::player::Player;
 
-use crate::channel::{BackendEndpoint, BackToFrontMessage};
+use crate::channel::{BackendEndpoint, BackToFrontMessage, FrontToBackMessage};
 
 use std::sync::mpsc::RecvError;
 use std::thread;
@@ -35,7 +35,8 @@ impl Game {
 
     pub fn start(&mut self) {
         let players = [
-            Player::Computer{ ai: Ai{ team: Team::Light } },
+            // Player::Computer{ ai: Ai{ team: Team::Light } },
+            Player::Human{ team: Team::Light },
             Player::Computer{ ai: Ai{ team: Team::Dark } },
         ];
         self.update_frontend();
@@ -44,7 +45,7 @@ impl Game {
             let (player_idx, current_player) = player_iter.next().unwrap();
             log!(self, "Player {}'s turn", player_idx);
             let result = match current_player {
-                Player::Human => self.process_human(current_player),
+                Player::Human{team} => self.process_human(current_player, *team), // TODO relationship between player/team is awkward
                 Player::Computer{ai} => self.process_ai(ai),
             };
             match result { // TODO clean up
@@ -57,12 +58,30 @@ impl Game {
         log!(self, "Game over!");
     }
 
-    fn process_human(&mut self, player: &Player) -> Result<bool, RecvError> {
+    fn process_human(&mut self, player: &Player, team: Team) -> Result<bool, RecvError> {
+        self.request_move_from_frontend(team);
         let msg = self.frontend_channel.rx.recv()?;
-        match msg {
-            // Ok(channel::Message::Move{ msg: s }) => s,  // TODO
-            x => log!(self, "Warning: Unhandled message from frontend: {:?}", x), // TODO I think there is a more idiomatic way to write this
+        let mv = match msg {
+            FrontToBackMessage::Move(mv) => mv,
+            msg => panic!("Unexpected message from frontend: {:?}", msg),
         };
+
+        match self.board.get_piece_at(&mv.from) {
+            Some(piece) if piece.team == team => { // TODO let board handle this logic, plus check other validity
+                log!(self, "Human taking move: {}", mv);
+                self.board.apply_move(&mv);
+                self.update_frontend();
+
+                // TODO do I need to handle case where player has no valid moves?  (seems like outer loop should catch this)
+                if mv.is_jump() && !self.board.get_valid_jumps_for_piece_at(&mv.to).is_empty() {
+                    // TODO this only jumps should be accepted here, need special logic
+                    return self.process_human(player, team);
+                    // TODO need to be able to signify "stop jumping"... use same path as move cancel (need a message to tell backend to continue?)
+                }
+            },
+            _ => panic!("Frontend sent bad move: {}", mv),
+        }
+
         Ok(true)
     }
 
@@ -98,6 +117,11 @@ impl Game {
             self.update_frontend();
         }
         Ok(true)
+    }
+
+    fn request_move_from_frontend(&self, team: Team) {
+        log!(self, "Requesting move for team {:?}...", team);
+        self.frontend_channel.tx.send(BackToFrontMessage::RequestMove(team)).expect("Could not send RequestMove"); // TODO better handling
     }
 
     fn update_frontend(&self) {

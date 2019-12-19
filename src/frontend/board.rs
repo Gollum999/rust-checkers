@@ -2,7 +2,7 @@ use super::args::{Args, Color, ColorScheme};
 use super::log::LogView;
 
 use crate::backend;
-use backend::{Board, Piece, PieceType, Square, Team};
+use backend::{Board, Move, Piece, PieceType, Square, Team};
 use crate::channel::FrontendEndpoint;
 
 use std::cell::RefCell;
@@ -16,8 +16,8 @@ use pancurses::{
 
 enum State {
     Waiting,
-    ChoosingPiece,
-    ChoosingMove(Piece),
+    ChoosingPiece(Team),
+    ChoosingMove(Team, Square, Vec<Move>),
 }
 
 pub const SQUARE_WIDTH: usize = 3;
@@ -26,23 +26,36 @@ pub struct BoardView {
     args: Args,
     board: Board,
     window: pancurses::Window,
+
     log: Rc<RefCell<LogView>>, // TODO not sure if this is the best way to do this
+    backend_channel: Rc<RefCell<FrontendEndpoint>>,
+
     cursor: Square,
     state: State,
 }
 impl BoardView {
-    pub fn new(args: Args, window: pancurses::Window, log: Rc<RefCell<LogView>>) -> BoardView {
+    pub fn new(
+        args: Args,
+        window: pancurses::Window,
+        log: Rc<RefCell<LogView>>,
+        backend_channel: Rc<RefCell<FrontendEndpoint>>,
+    ) -> BoardView {
         let board = BoardView {
             args: args,
             board: Board::new(),
             window: window,
             log: log,
+            backend_channel: backend_channel,
             cursor: Square{ x: 0, y: 7 },
             state: State::Waiting,
         };
         board.window.draw_box(ACS_VLINE(), ACS_HLINE());
 
         board
+    }
+
+    pub fn start_selecting_piece(&mut self, team: Team) {
+        self.state = State::ChoosingPiece(team);
     }
 
     // TODO if selecting move, limit to valid moves?
@@ -70,26 +83,51 @@ impl BoardView {
         }
         self.cursor.x = (self.cursor.x + Board::SIZE) % Board::SIZE;
         self.cursor.y = (self.cursor.y + Board::SIZE) % Board::SIZE;
-        log!(self.log, "move_cursor {:?}, new pos = {}", dir, self.cursor);
     }
 
     pub fn do_action(&mut self) {
         // println!("do_action");
-        match self.state {
+        match &mut self.state {
             State::Waiting => (),
-            State::ChoosingPiece => {
-                log!(self.log, "choosing piece.."); // TODO
-                // let piece = self.board.get_piece_at(self.cursor);
-                // self.state = State::ChoosingMove(piece);
+            State::ChoosingPiece(team) => {
+                log!(self.log, "choosing piece.. {:?}", team); // TODO
+                match self.board.get_piece_at(&self.cursor) {
+                    Some(piece) if piece.team == *team => {
+                        let valid_moves = self.board.get_valid_moves_for_piece_at(&self.cursor);
+                        if valid_moves.is_empty() {
+                            log!(self.log, "Piece at {} has no valid moves", self.cursor);
+                            return;
+                        }
+                        log!(self.log, "valid moves: {:?}", valid_moves);
+                        self.state = State::ChoosingMove(*team, self.cursor, valid_moves);
+                    },
+                    Some(_) => log!(self.log, "Piece at {} not owned by {:?}", self.cursor, team),
+                    None => (),
+                };
             },
-            State::ChoosingMove(piece) => {
-                log!(self.log, "choosing move.."); // TODO
-                // self.send_msg(Message::Move{ from: piece.pos(), to: self.cursor });
-                // if !move.is_jump() || self.board.get_jumps_for(piece).is_empty() {
-                //     self.state = State::Waiting;
-                // }
+            State::ChoosingMove(team, piece_pos, valid_moves) => {
+                use crate::channel::FrontToBackMessage as Msg;
+                log!(self.log, "choosing move.. {:?}", valid_moves); // TODO
+                if self.cursor == *piece_pos {
+                    // Cancel move
+                    self.state = State::ChoosingPiece(*team); // TODO return new state?
+                    log!(self.log, "Move canceled");
+                    return;
+                }
+                let mv = Move{ from: *piece_pos, to: self.cursor };
+                if valid_moves.contains(&mv) {
+                    log!(self.log, "sending move {:?}", mv);
+                    self.send_msg(Msg::Move(mv));
+                    self.state = State::Waiting;
+                } else {
+                    log!(self.log, "Illegal move {}", mv)
+                }
             },
         }
+    }
+
+    fn send_msg(&self, msg: crate::channel::FrontToBackMessage) {
+        self.backend_channel.borrow_mut().tx.send(msg).expect("Could not send message"); // TODO better error handling
     }
 
     fn get_piece_glyph(piece: Option<&Piece>, ascii: bool) -> char {
@@ -119,6 +157,7 @@ impl BoardView {
         let pieces = self.board.get_pieces();
         for y in 0..Board::SIZE {
             for x in 0..Board::SIZE {
+                // TODO blink cursor when piece selected, highlight valid moves?
                 let left   = if self.cursor == (Square{x, y}) { "[" } else { " " };
                 let center = Self::get_piece_glyph(pieces.get(&Square{x, y}), self.args.ascii);
                 let right  = if self.cursor == (Square{x, y}) { "]" } else { " " };

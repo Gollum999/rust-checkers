@@ -117,6 +117,10 @@ impl Board {
         !light_alive || !dark_alive
     }
 
+    pub fn get_piece_at(&self, square: &Square) -> Option<&Piece> {
+        self.pieces.get(square)
+    }
+
     fn find_piece_square(&self, piece: &Piece) -> &Square {
         for (square, other_piece) in &self.pieces {
             if piece == other_piece {

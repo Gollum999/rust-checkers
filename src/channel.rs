@@ -1,5 +1,5 @@
 use std::sync::mpsc;
-use super::backend::{Board, Square};
+use super::backend::{Board, Move, Square, Team};
 
 pub struct Endpoint<TxMsg, RxMsg> {
     pub tx: mpsc::Sender<TxMsg>,
@@ -18,6 +18,7 @@ pub fn make_two_way_channel() -> (BackendEndpoint, FrontendEndpoint) {
 pub enum BackToFrontMessage {
     Log{ msg: String },
     BoardState(Board),
+    RequestMove(Team),
 }
 impl std::fmt::Debug for BackToFrontMessage {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
@@ -29,5 +30,5 @@ impl std::fmt::Debug for BackToFrontMessage {
 }
 #[derive(Debug)]
 pub enum FrontToBackMessage {
-    Move{ from: Square, to: Square },
+    Move(Move),
 }
