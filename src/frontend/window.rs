@@ -120,6 +120,7 @@ const SQUARE_WIDTH: usize = 3;
 
 struct BoardView {
     args: Args,
+    board: Option<Board>,
     window: pancurses::Window,
     log: Rc<RefCell<LogView>>, // TODO not sure if this is the best way to do this
     cursor: Square,
@@ -129,9 +130,10 @@ impl BoardView {
     fn new(args: Args, window: pancurses::Window, log: Rc<RefCell<LogView>>) -> BoardView {
         let board = BoardView {
             args: args,
+            board: None,
             window: window,
             log: log,
-            cursor: Square{ x: 0, y: 0 },
+            cursor: Square{ x: 0, y: 7 },
             state: State::Waiting,
         };
         board.window.draw_box(ACS_VLINE(), ACS_HLINE());
@@ -146,15 +148,15 @@ impl BoardView {
             Input::KeyRight => self.cursor.x += 2,
             Input::KeyUp => {
                 if self.cursor.x % 2 == 0 {
-                    self.cursor.x -=1;
-                } else {
                     self.cursor.x += 1;
+                } else {
+                    self.cursor.x -= 1;
                 }
                 self.cursor.y -= 1;
             },
             Input::KeyDown => {
                 if self.cursor.x % 2 == 0 {
-                    self.cursor.x +=1;
+                    self.cursor.x += 1;
                 } else {
                     self.cursor.x -= 1;
                 }
@@ -162,8 +164,8 @@ impl BoardView {
             },
             _ => panic!("Bad dir passed to move_cursor: {:?}", dir),
         }
-        self.cursor.x = self.cursor.x % Board::SIZE;
-        self.cursor.y = self.cursor.y % Board::SIZE;
+        self.cursor.x = (self.cursor.x + Board::SIZE) % Board::SIZE;
+        self.cursor.y = (self.cursor.y + Board::SIZE) % Board::SIZE;
         log!(self.log, "move_cursor {:?}, new pos = {}", dir, self.cursor);
     }
 
@@ -202,26 +204,37 @@ impl BoardView {
         }
     }
 
-    fn draw(&mut self, board: Board) {
-        let pieces = board.get_pieces();
+    pub fn set_board_state(&mut self, board: Board) {
+        self.board = Some(board);
+        // This gets rid of the wide-char artifacts, but not the most efficient
+        // Doing this here instead of in draw() prevents flickering
+        self.window.clearok(true);
+    }
+
+    fn draw(&mut self) {
+        if self.board.is_none() {
+            return;
+        }
+        let pieces = self.board.as_ref().unwrap().get_pieces();
         for y in 0..Board::SIZE {
             for x in 0..Board::SIZE {
-                let c = Self::get_piece_glyph(pieces.get(&Square{x, y}), self.args.ascii);
+                let left   = if self.cursor == (Square{x, y}) { "[" } else { " " };
+                let center = Self::get_piece_glyph(pieces.get(&Square{x, y}), self.args.ascii);
+                let right  = if self.cursor == (Square{x, y}) { "]" } else { " " };
+                let ch = format!("{left}{center}{right}", left=left, center=center, right=right);
                 let colors = match self.args.color_scheme {
                     args::ColorScheme::WhiteRed   => [Color::WhiteOnRed as i16,   Color::RedOnWhite as i16],
                     args::ColorScheme::RedBlack   => [Color::RedOnBlack as i16,   Color::BlackOnRed as i16],
                     args::ColorScheme::WhiteBlack => [Color::WhiteOnBlack as i16, Color::BlackOnWhite as i16],
                 };
-                self.window.color_set(colors[((x + y + 1) % 2) as usize]);
-                self.window.mvaddstr(
-                    (y + 1) as i32,
-                    (x * SQUARE_WIDTH as i8 + 1) as i32,
-                    format!("{char:^width$}", char=c, width=SQUARE_WIDTH),
-                );
+                let real_x = (x * SQUARE_WIDTH as i8 + 1) as i32;
+                let real_y = (y + 1) as i32;
+                let color_pair = colors[((x + y + 1) % 2) as usize];
+                // let attrs = if self.cursor == (Square{x, y}) { A_BLINK } else { A_NORMAL };
+                self.window.color_set(color_pair);
+                self.window.mvaddstr(real_y, real_x, format!("{char:^width$}", char=ch, width=SQUARE_WIDTH));
             }
         }
-
-        self.window.clearok(true); // This gets rid of the wide-char artifacts, but not the most efficient
         self.window.refresh();
     }
 }
@@ -294,15 +307,24 @@ impl Window {
     }
 
     pub fn run(&mut self) {
+        use super::super::channel::BackToFrontMessage as Msg;
         loop {
-            let msg = self.backend_channel.rx.recv().unwrap();
-            use super::super::channel::BackToFrontMessage as Msg;
+            let msg = self.backend_channel.rx.try_recv();
             match msg {
-                Msg::Log{ msg: s } => log!(self.log, "{}", s),
-                Msg::BoardState(board) => self.board.draw(board),
+                Ok(msg) => {
+                    match msg {
+                        Msg::Log{ msg: s } => log!(self.log, "{}", s),
+                        Msg::BoardState(board) => self.board.set_board_state(board),
+                    };
+                },
+                Err(err) => match err {
+                    std::sync::mpsc::TryRecvError::Disconnected => { println!("Disconnected"); break; },
+                    _ => (),
+                },
             };
 
             // self.main_window.addstr("○●◯◖◗⬤⭗⭕⭘🔴🔵🞉🞊♛♕♔♚👑⛀⛂⛁⛃");
+            self.board.draw();
             self.log.borrow_mut().window.draw_box(ACS_VLINE(), ACS_HLINE()); // TODO temp?
             self.log.borrow_mut().window.refresh();
             self.main_window.refresh();
