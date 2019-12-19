@@ -1,23 +1,6 @@
+use super::backend::args::{Args as BackendArgs};
+use super::frontend::args::{ColorScheme, Args as FrontendArgs};
 use clap::{Arg, App};
-
-arg_enum! {
-    #[derive(Clone, Debug)]
-    pub enum ColorScheme {
-        WhiteRed,
-        RedBlack,
-        WhiteBlack,
-    }
-}
-
-#[derive(Clone, Debug)]
-pub struct BackendArgs {
-}
-
-#[derive(Clone, Debug)]
-pub struct FrontendArgs {
-    pub ascii: bool,
-    pub color_scheme: ColorScheme,
-}
 
 pub fn get_args() -> (BackendArgs, FrontendArgs) {
     let args = App::new("checkers")

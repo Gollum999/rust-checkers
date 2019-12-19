@@ -1,8 +1,9 @@
 use super::ai::Ai;
+use super::args::Args;
 use super::board::{Board, Team};
 use super::player::Player;
-use super::super::args::BackendArgs as Args; // TODO any way to clean this up?
-use super::super::channel::{BackendEndpoint, BackToFrontMessage}; // TODO any way to clean this up?
+
+use crate::channel::{BackendEndpoint, BackToFrontMessage};
 
 use std::sync::mpsc::RecvError;
 use std::thread;
