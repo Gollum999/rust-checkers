@@ -14,7 +14,7 @@ use std::rc::Rc;
 use pancurses::{
     ACS_HLINE, ACS_VLINE,
     COLOR_BLACK, COLOR_RED, COLOR_WHITE,
-    endwin, initscr, init_pair, Input, noecho, start_color,
+    curs_set, endwin, initscr, init_pair, Input, noecho, start_color,
 };
 
 #[derive(Debug)]
@@ -121,6 +121,7 @@ impl Window {
         };
         w.main_window.keypad(true); // Allow control characters
         w.main_window.nodelay(true); // Input is non-blocking
+        curs_set(0); // Hide cursor
         start_color(); // Enable colors
         noecho(); // Don't echo typed characters
 
