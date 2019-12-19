@@ -24,7 +24,7 @@ pub const SQUARE_WIDTH: usize = 3;
 
 pub struct BoardView {
     args: Args,
-    board: Option<Board>,
+    board: Board,
     window: pancurses::Window,
     log: Rc<RefCell<LogView>>, // TODO not sure if this is the best way to do this
     cursor: Square,
@@ -34,7 +34,7 @@ impl BoardView {
     pub fn new(args: Args, window: pancurses::Window, log: Rc<RefCell<LogView>>) -> BoardView {
         let board = BoardView {
             args: args,
-            board: None,
+            board: Board::new(),
             window: window,
             log: log,
             cursor: Square{ x: 0, y: 7 },
@@ -109,17 +109,14 @@ impl BoardView {
     }
 
     pub fn set_board_state(&mut self, board: Board) {
-        self.board = Some(board);
+        self.board = board;
         // This gets rid of the wide-char artifacts, but not the most efficient
         // Doing this here instead of in draw() prevents flickering
         self.window.clearok(true);
     }
 
     pub fn draw(&mut self) {
-        if self.board.is_none() {
-            return;
-        }
-        let pieces = self.board.as_ref().unwrap().get_pieces();
+        let pieces = self.board.get_pieces();
         for y in 0..Board::SIZE {
             for x in 0..Board::SIZE {
                 let left   = if self.cursor == (Square{x, y}) { "[" } else { " " };
