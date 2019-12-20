@@ -61,21 +61,21 @@ impl CursesFrontend {
         }
     }
 
-    fn process_input<Actor: CursorInput>(&self, actor: &mut Actor) -> bool {
+    fn process_input<Actor: CursorInput>(&self, actor: &mut Actor) -> Option<Actor::Action> {
         let key = self.window.getch();
         const ESC: char = 27 as char;
         match key {
             None => (),
             Some(key) => match key {
                 Input::KeyLeft | Input::KeyRight | Input::KeyUp | Input::KeyDown => actor.move_cursor(key),
-                Input::KeyEnter | Input::Character('\n') | Input::Character(' ') => actor.do_action(),
-                Input::Character('q') | Input::KeyDC | Input::Character(ESC) => return false,
+                Input::KeyEnter | Input::Character('\n') | Input::Character(' ') => return actor.do_action(),
+                Input::Character('q') | Input::KeyDC | Input::Character(ESC) => std::process::exit(0),
                 // i => log!(self.window, "unknown... {:?}", i),
                 _ => (),
             },
         };
 
-        true
+        None
     }
 
     fn send_msg(&self, msg: crate::channel::FrontToBackMessage) {
@@ -84,6 +84,7 @@ impl CursesFrontend {
 
     pub fn run(&mut self) -> Result<(), WindowError> {
         let preferences = self.handle_menu();
+        self.window.clear();
         self.send_msg(crate::channel::FrontToBackMessage::StartGame(preferences.clone()));
 
         self.main_loop(preferences)
@@ -91,20 +92,15 @@ impl CursesFrontend {
 
     fn handle_menu(&mut self) -> Preferences {
         let mut menu = Menu::new();
-        loop {
-            if !self.process_input(&mut menu) {
-                break; // TODO immediate exit, not just continue to game
+        return loop {
+            match self.process_input(&mut menu) {
+                Some(prefs) => break prefs,
+                None => (),
             }
+
             menu.draw(&mut self.window); // TODO window doesn't need to be mut everywhere
 
             std::thread::sleep(std::time::Duration::from_millis(10)); // Throttle to keep my laptop from melting
-        }
-
-        // TODO
-        self.window.clear();
-        Preferences {
-            ascii: false,
-            color_scheme: super::menu::ColorScheme::RedBlack,
         }
     }
 
@@ -150,9 +146,11 @@ impl CursesFrontend {
             log.borrow_mut().window.refresh();
             self.window.refresh();
 
-            if !self.process_input(&mut board) {
-                break;
-            }
+            self.process_input(&mut board);
+            // match self.process_input(&mut board) {
+            //     Some(_) => break,
+            //     None => (),
+            // }
 
             // TODO I think I can turn this up if I rearrange some things in here
             std::thread::sleep(std::time::Duration::from_millis(10)); // Throttle to keep my laptop from melting

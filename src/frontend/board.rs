@@ -168,6 +168,8 @@ impl BoardView {
     }
 }
 impl CursorInput for BoardView {
+    type Action = ();
+
     // TODO if selecting move, limit to valid moves?
     fn move_cursor(&mut self, dir: Input) {
         match dir {
@@ -195,10 +197,12 @@ impl CursorInput for BoardView {
         self.cursor.y = (self.cursor.y + Board::SIZE) % Board::SIZE;
     }
 
-    fn do_action(&mut self) {
+    fn do_action(&mut self) -> Option<Self::Action> {
         match self.process_state() {
             Some(new_state) => self.state = new_state,
             None => (),
-        }
+        };
+
+        None
     }
 }

@@ -23,7 +23,7 @@ pub enum Color {
 }
 
 arg_enum! {
-    #[derive(Clone, Debug)]
+    #[derive(Clone, Copy, Debug)]
     pub enum ColorScheme {
         WhiteRed,
         RedBlack,
@@ -31,40 +31,48 @@ arg_enum! {
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Copy, Debug)]
 pub struct Preferences {
-    pub ascii: bool,
+    // pub players: [Player; 2],
+    pub players: [&'static str; 2],
     pub color_scheme: ColorScheme,
+    pub ascii: bool,
 }
 
-// struct MenuItem{description: &'static str, values: &'static [&'static str], default: &'static str}
-struct MenuItem{
+// struct MenuItem{description: &'static str, value_labels: &'static [&'static str], default: &'static str}
+// struct MenuItem<V> {
+struct MenuItem {
     description: &'static str,
-    values: &'static [&'static str],
+    value_labels: &'static [&'static str],
+    // values: &'static [V],
     default: usize,
 }
 // const MENU: &'static [&'static MenuItem] = &[
 const MENU: &[&MenuItem] = &[
     // TODO CPU difficulty
-    &MenuItem{
-        description: "Player 1",
-        values:      &["Human", "CPU"],
-        default:     0,
+    &MenuItem {
+        description:  "Player 1",
+        value_labels: &["Human", "CPU"],
+        // values:       &[true, false], // TODO
+        default:      0,
     },
-    &MenuItem{
-        description: "Player 2",
-        values:      &["Human", "CPU"],
-        default:     1,
+    &MenuItem {
+        description:  "Player 2",
+        value_labels: &["Human", "CPU"],
+        // values:       &[true, false], // TODO
+        default:      1,
     },
-    &MenuItem{
-        description: "Color Scheme",
-        values:      &["Red/Black", "White/Red", "White/Black"],
-        default:     0,
+    &MenuItem {
+        description:  "Color Scheme",
+        value_labels: &["Red/Black", "White/Red", "White/Black"],
+        // values:       &[ColorScheme::RedBlack, ColorScheme::WhiteRed, ColorScheme::WhiteBlack],
+        default:      0,
     },
-    &MenuItem{
-        description: "Fancy Icons",
-        values:      &["ON (⛂⛃⛀⛁)", "OFF (O@=#)"],
-        default:     0,
+    &MenuItem {
+        description:  "Fancy Icons",
+        value_labels: &["ON (⛂⛃⛀⛁)", "OFF (O@=#)"],
+        // values:       &[true, false],
+        default:      0,
     },
 ];
 
@@ -99,7 +107,7 @@ impl Menu {
             .unwrap();
         let value_column_width = MENU
             .iter()
-            .map(|item| item.values.iter().map(|x| x.chars().count()).max().unwrap() + 4) // account for Unicode chars
+            .map(|item| item.value_labels.iter().map(|x| x.chars().count()).max().unwrap() + 4) // account for Unicode chars
             .max()
             .unwrap();
         let menu_width = description_column_width + value_column_width + SPACING_X;
@@ -112,9 +120,9 @@ impl Menu {
         let offset_yx = (center_yx.0 - menu_half_size.0 as i32, center_yx.1 - menu_half_size.1 as i32);
 
         for (idx, item) in MENU.iter().enumerate() {
-            let selected_value = item.values[self.selections[idx]];
+            let selected_value = item.value_labels[self.selections[idx]];
             let value = format!("< {} >", selected_value);
-            // let value = format!("< {:^width$} >", item.values[self.selections[idx]], width=);
+            // let value = format!("< {:^width$} >", item.value_labels[self.selections[idx]], width=);
             window.mvaddstr(offset_yx.0 + idx as i32, offset_yx.1,
                             format!("{desc:<desc_width$}{spacing}{value:>value_width$}",
                                     desc=item.description, desc_width=description_column_width,
@@ -131,11 +139,12 @@ impl Menu {
                 );
             }
         }
-        window.mvaddstr(0, 0, format!("cursor: {} selections: {:?}", self.cursor, self.selections));
         window.refresh();
     }
 }
 impl CursorInput for Menu {
+    type Action = Preferences;
+
     fn move_cursor(&mut self, dir: Input) {
         let mut cursor = self.cursor as i32;
         let mut selection = self.selections[self.cursor] as i32;
@@ -149,15 +158,21 @@ impl CursorInput for Menu {
             _ => panic!("Bad dir passed to move_cursor: {:?}", dir),
         }
 
-        let num_values = item.values.len() as i32;
+        let num_values = item.value_labels.len() as i32;
         self.selections[self.cursor] = ((selection + num_values) % num_values) as usize;
         self.cursor = std::cmp::min(std::cmp::max(cursor, 0), (MENU.len() - 1) as i32) as usize;
     }
 
-    fn do_action(&mut self) {
-        // match self.process_state() {
-        //     Some(new_state) => self.state = new_state,
-        //     None => (),
-        // }
+    fn do_action(&mut self) -> Option<Self::Action> {
+        // TODO put these alongside MENU somehow
+        let get_player       = |s| ["Human", "CPU"][s];
+        let get_color_scheme = |s| [ColorScheme::RedBlack, ColorScheme::WhiteRed, ColorScheme::WhiteBlack][s];
+        let get_ascii        = |s| [false, true][s];
+       
+        Some(Preferences {
+            players: [get_player(self.selections[0]), get_player(self.selections[1])],
+            color_scheme: get_color_scheme(self.selections[2]),
+            ascii: get_ascii(self.selections[3]),
+        })
     }
 }
