@@ -83,9 +83,13 @@ pub struct Menu {
 impl Menu {
     pub fn new() -> Menu {
         Menu {
-            // TODO probably need an intermediate representation before constructing actual values
             cursor: 0, // TODO any way to use iterators here?
-            selections: [0; MENU.len()],
+            selections: [ // TODO *barf*
+                MENU[0].default,
+                MENU[1].default,
+                MENU[2].default,
+                MENU[3].default,
+            ]
         }
     }
 
@@ -165,7 +169,7 @@ impl CursorInput for Menu {
 
     fn do_action(&mut self) -> Option<Self::Action> {
         // TODO put these alongside MENU somehow
-        let get_player       = |s| ["Human", "CPU"][s];
+        let get_player       = |s| ["Human", "CPU"][s]; // TODO enum
         let get_color_scheme = |s| [ColorScheme::RedBlack, ColorScheme::WhiteRed, ColorScheme::WhiteBlack][s];
         let get_ascii        = |s| [false, true][s];
        
