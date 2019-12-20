@@ -1,3 +1,4 @@
+use super::cursor_input::CursorInput;
 use super::log::LogView;
 use super::menu::{Color, ColorScheme, Preferences};
 
@@ -60,40 +61,6 @@ impl BoardView {
 
     pub fn continue_jumping(&mut self, team: Team, square: Square, valid_moves: Vec<Move>) {
         self.state = State::ChoosingMove(team, square, valid_moves, true);
-    }
-
-    // TODO if selecting move, limit to valid moves?
-    pub fn move_cursor(&mut self, dir: Input) {
-        match dir {
-            Input::KeyLeft => self.cursor.x -= 2,
-            Input::KeyRight => self.cursor.x += 2,
-            Input::KeyUp => {
-                if self.cursor.x % 2 == 0 {
-                    self.cursor.x += 1;
-                } else {
-                    self.cursor.x -= 1;
-                }
-                self.cursor.y -= 1;
-            },
-            Input::KeyDown => {
-                if self.cursor.x % 2 == 0 {
-                    self.cursor.x += 1;
-                } else {
-                    self.cursor.x -= 1;
-                }
-                self.cursor.y += 1;
-            },
-            _ => panic!("Bad dir passed to move_cursor: {:?}", dir),
-        }
-        self.cursor.x = (self.cursor.x + Board::SIZE) % Board::SIZE;
-        self.cursor.y = (self.cursor.y + Board::SIZE) % Board::SIZE;
-    }
-
-    pub fn do_action(&mut self) {
-        match self.process_state() {
-            Some(new_state) => self.state = new_state,
-            None => (),
-        }
     }
 
     fn process_state(&self) -> Option<State> {
@@ -198,5 +165,40 @@ impl BoardView {
             }
         }
         self.window.refresh();
+    }
+}
+impl CursorInput for BoardView {
+    // TODO if selecting move, limit to valid moves?
+    fn move_cursor(&mut self, dir: Input) {
+        match dir {
+            Input::KeyLeft => self.cursor.x -= 2,
+            Input::KeyRight => self.cursor.x += 2,
+            Input::KeyUp => {
+                if self.cursor.x % 2 == 0 {
+                    self.cursor.x += 1;
+                } else {
+                    self.cursor.x -= 1;
+                }
+                self.cursor.y -= 1;
+            },
+            Input::KeyDown => {
+                if self.cursor.x % 2 == 0 {
+                    self.cursor.x += 1;
+                } else {
+                    self.cursor.x -= 1;
+                }
+                self.cursor.y += 1;
+            },
+            _ => panic!("Bad dir passed to move_cursor: {:?}", dir),
+        }
+        self.cursor.x = (self.cursor.x + Board::SIZE) % Board::SIZE;
+        self.cursor.y = (self.cursor.y + Board::SIZE) % Board::SIZE;
+    }
+
+    fn do_action(&mut self) {
+        match self.process_state() {
+            Some(new_state) => self.state = new_state,
+            None => (),
+        }
     }
 }

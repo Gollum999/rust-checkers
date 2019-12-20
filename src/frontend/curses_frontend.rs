@@ -1,6 +1,7 @@
 extern crate pancurses;
 
 use super::board::{BoardView, SQUARE_WIDTH};
+use super::cursor_input::CursorInput;
 use super::log::LogView;
 use super::menu::{Color, Menu, Preferences};
 
@@ -60,14 +61,14 @@ impl CursesFrontend {
         }
     }
 
-    fn process_input(&self, board: &mut BoardView) -> bool {
+    fn process_input<Actor: CursorInput>(&self, actor: &mut Actor) -> bool {
         let key = self.window.getch();
         const ESC: char = 27 as char;
         match key {
             None => (),
             Some(key) => match key {
-                Input::KeyLeft | Input::KeyRight | Input::KeyUp | Input::KeyDown => board.move_cursor(key),
-                Input::KeyEnter | Input::Character('\n') | Input::Character(' ') => board.do_action(),
+                Input::KeyLeft | Input::KeyRight | Input::KeyUp | Input::KeyDown => actor.move_cursor(key),
+                Input::KeyEnter | Input::Character('\n') | Input::Character(' ') => actor.do_action(),
                 Input::Character('q') | Input::KeyDC | Input::Character(ESC) => return false,
                 // i => log!(self.window, "unknown... {:?}", i),
                 _ => (),
@@ -88,8 +89,19 @@ impl CursesFrontend {
         self.main_loop(preferences)
     }
 
-    fn handle_menu(&self) -> Preferences {
+    fn handle_menu(&mut self) -> Preferences {
+        let mut menu = Menu::new();
+        loop {
+            if !self.process_input(&mut menu) {
+                break; // TODO immediate exit, not just continue to game
+            }
+            menu.draw(&mut self.window); // TODO window doesn't need to be mut everywhere
+
+            std::thread::sleep(std::time::Duration::from_millis(10)); // Throttle to keep my laptop from melting
+        }
+
         // TODO
+        self.window.clear();
         Preferences {
             ascii: false,
             color_scheme: super::menu::ColorScheme::RedBlack,
@@ -142,6 +154,7 @@ impl CursesFrontend {
                 break;
             }
 
+            // TODO I think I can turn this up if I rearrange some things in here
             std::thread::sleep(std::time::Duration::from_millis(10)); // Throttle to keep my laptop from melting
         }
         // println!("DONE");
