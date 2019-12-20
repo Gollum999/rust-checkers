@@ -51,13 +51,13 @@ struct MenuItem {
 const MENU: &[&MenuItem] = &[
     // TODO CPU difficulty
     &MenuItem {
-        description:  "Player 1",
+        description:  "Player 1 (light)",
         value_labels: &["Human", "CPU"],
         // values:       &[true, false], // TODO
         default:      0,
     },
     &MenuItem {
-        description:  "Player 2",
+        description:  "Player 2 (dark)",
         value_labels: &["Human", "CPU"],
         // values:       &[true, false], // TODO
         default:      1,

@@ -69,7 +69,10 @@ impl CursesFrontend {
             Some(key) => match key {
                 Input::KeyLeft | Input::KeyRight | Input::KeyUp | Input::KeyDown => actor.move_cursor(key),
                 Input::KeyEnter | Input::Character('\n') | Input::Character(' ') => return actor.do_action(),
-                Input::Character('q') | Input::KeyDC | Input::Character(ESC) => std::process::exit(0),
+                Input::Character('q') | Input::KeyDC | Input::Character(ESC) => {
+                    endwin();
+                    std::process::exit(0);
+                }
                 // i => log!(self.window, "unknown... {:?}", i),
                 _ => (),
             },

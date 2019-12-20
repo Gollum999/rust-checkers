@@ -8,7 +8,7 @@ pub struct Args {
 pub fn get_args() -> Args {
     let args = App::new("checkers")
         .version("1.0")
-        .arg(Arg::with_name("debug").long("debug").help("Enable debug logging"))
+        // .arg(Arg::with_name("debug").long("debug").help("Enable debug logging"))
         .get_matches();
 
     Args {
