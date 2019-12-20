@@ -39,10 +39,16 @@ impl Game {
             FrontToBackMessage::StartGame(prefs) => prefs,
             msg => panic!("Unexpected message from frontend: {:?}", msg),
         };
-        let players = [ // TODO pull from prefs
-            // Player::Computer{ ai: Ai{ team: Team::Light } },
-            Player::Human{ team: Team::Light },
-            Player::Computer{ ai: Ai{ team: Team::Dark } },
+        let make_player = |team, pref| {
+            match pref {
+                "Human" => Player::Human{ team: team },
+                "CPU"   => Player::Computer{ ai: Ai{ team: team } },
+                _ => panic!("Bad player pref: {:?}", pref)
+            }
+        };
+        let players = [
+            make_player(Team::Light, prefs.players[0]),
+            make_player(Team::Dark,  prefs.players[1]),
         ];
         self.update_frontend();
         let mut player_iter = players.iter().enumerate().cycle();
