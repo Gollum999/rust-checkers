@@ -1,8 +1,9 @@
 #[macro_use]
 mod log;
 
-pub mod args;
 mod board;
-mod window;
+mod curses_frontend;
+mod menu;
 
-pub use window::Window;
+pub use curses_frontend::CursesFrontend;
+pub use menu::Preferences;

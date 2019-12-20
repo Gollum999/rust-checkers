@@ -1,8 +1,8 @@
 use super::ai::Ai;
-use super::args::Args;
 use super::board::{Board, Move, Square, Team};
 use super::player::Player;
 
+use crate::args::Args;
 use crate::channel::{BackendEndpoint, BackToFrontMessage, FrontToBackMessage};
 
 use std::sync::mpsc::RecvError;
@@ -34,7 +34,12 @@ impl Game {
     }
 
     pub fn start(&mut self) {
-        let players = [
+        let msg = self.frontend_channel.rx.recv().unwrap();
+        let prefs = match msg {
+            FrontToBackMessage::StartGame(prefs) => prefs,
+            msg => panic!("Unexpected message from frontend: {:?}", msg),
+        };
+        let players = [ // TODO pull from prefs
             // Player::Computer{ ai: Ai{ team: Team::Light } },
             Player::Human{ team: Team::Light },
             Player::Computer{ ai: Ai{ team: Team::Dark } },

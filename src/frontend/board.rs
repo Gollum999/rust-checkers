@@ -1,5 +1,5 @@
-use super::args::{Args, Color, ColorScheme};
 use super::log::LogView;
+use super::menu::{Color, ColorScheme, Preferences};
 
 use crate::backend;
 use backend::{Board, Move, Piece, PieceType, Square, Team};
@@ -23,7 +23,7 @@ enum State {
 pub const SQUARE_WIDTH: usize = 3;
 
 pub struct BoardView {
-    args: Args,
+    preferences: Preferences,
     board: Board,
     window: pancurses::Window,
 
@@ -35,13 +35,13 @@ pub struct BoardView {
 }
 impl BoardView {
     pub fn new(
-        args: Args,
+        preferences: Preferences,
         window: pancurses::Window,
         log: Rc<RefCell<LogView>>,
         backend_channel: Rc<RefCell<FrontendEndpoint>>,
     ) -> BoardView {
-        let board = BoardView {
-            args: args,
+        let result = BoardView {
+            preferences: preferences,
             board: Board::new(),
             window: window,
             log: log,
@@ -49,9 +49,9 @@ impl BoardView {
             cursor: Square{ x: 0, y: 7 },
             state: State::Waiting,
         };
-        board.window.draw_box(ACS_VLINE(), ACS_HLINE());
+        result.window.draw_box(ACS_VLINE(), ACS_HLINE());
 
-        board
+        result
     }
 
     pub fn start_selecting_piece(&mut self, team: Team) {
@@ -181,10 +181,10 @@ impl BoardView {
             for x in 0..Board::SIZE {
                 // TODO blink cursor when piece selected, highlight valid moves?
                 let left   = if self.cursor == (Square{x, y}) { "[" } else { " " };
-                let center = Self::get_piece_glyph(pieces.get(&Square{x, y}), self.args.ascii);
+                let center = Self::get_piece_glyph(pieces.get(&Square{x, y}), self.preferences.ascii);
                 let right  = if self.cursor == (Square{x, y}) { "]" } else { " " };
                 let ch = format!("{left}{center}{right}", left=left, center=center, right=right);
-                let colors = match self.args.color_scheme {
+                let colors = match self.preferences.color_scheme {
                     ColorScheme::WhiteRed   => [Color::WhiteOnRed as i16,   Color::RedOnWhite as i16],
                     ColorScheme::RedBlack   => [Color::RedOnBlack as i16,   Color::BlackOnRed as i16],
                     ColorScheme::WhiteBlack => [Color::WhiteOnBlack as i16, Color::BlackOnWhite as i16],

@@ -1,5 +1,6 @@
 use std::sync::mpsc;
 use super::backend::{Board, Move, Square, Team};
+use super::frontend::Preferences;
 
 pub struct Endpoint<TxMsg, RxMsg> {
     pub tx: mpsc::Sender<TxMsg>,
@@ -31,6 +32,7 @@ impl std::fmt::Debug for BackToFrontMessage {
 }
 #[derive(Debug)]
 pub enum FrontToBackMessage {
+    StartGame(Preferences),
     Move(Move),
     CancelMove,
 }
