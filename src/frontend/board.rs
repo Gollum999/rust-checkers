@@ -173,24 +173,10 @@ impl CursorInput for BoardView {
     // TODO if selecting move, limit to valid moves?
     fn move_cursor(&mut self, dir: Input) {
         match dir {
-            Input::KeyLeft => self.cursor.x -= 2,
-            Input::KeyRight => self.cursor.x += 2,
-            Input::KeyUp => {
-                if self.cursor.x % 2 == 0 {
-                    self.cursor.x += 1;
-                } else {
-                    self.cursor.x -= 1;
-                }
-                self.cursor.y -= 1;
-            },
-            Input::KeyDown => {
-                if self.cursor.x % 2 == 0 {
-                    self.cursor.x += 1;
-                } else {
-                    self.cursor.x -= 1;
-                }
-                self.cursor.y += 1;
-            },
+            Input::KeyLeft => self.cursor.x -= 1,
+            Input::KeyRight => self.cursor.x += 1,
+            Input::KeyUp => self.cursor.y -= 1,
+            Input::KeyDown => self.cursor.y += 1,
             _ => panic!("Bad dir passed to move_cursor: {:?}", dir),
         }
         self.cursor.x = (self.cursor.x + Board::SIZE) % Board::SIZE;
