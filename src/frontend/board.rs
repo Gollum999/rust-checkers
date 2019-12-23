@@ -147,9 +147,12 @@ impl BoardView {
         for y in 0..Board::SIZE {
             for x in 0..Board::SIZE {
                 // TODO blink cursor when piece selected, highlight valid moves?
-                let left   = if self.cursor == (Square{x, y}) { "[" } else { " " };
+                let (left, right) = match self.state {
+                    State::ChoosingMove(_, piece_pos, _, _) if piece_pos == (Square{x, y}) => ("(", ")"),
+                    _ if self.cursor == (Square{x, y})                                     => ("[", "]"),
+                    _                                                                      => (" ", " "),
+                };
                 let center = Self::get_piece_glyph(pieces.get(&Square{x, y}), self.preferences.ascii);
-                let right  = if self.cursor == (Square{x, y}) { "]" } else { " " };
                 let ch = format!("{left}{center}{right}", left=left, center=center, right=right);
                 let colors = match self.preferences.color_scheme {
                     ColorScheme::WhiteRed   => [Color::WhiteOnRed as i16,   Color::RedOnWhite as i16],
