@@ -78,7 +78,7 @@ const MENU: &[&MenuItem] = &[
 
 pub struct Menu {
     cursor: usize,
-    selections: [usize; MENU.len()],
+    selections: [usize; 4],
 }
 impl Menu {
     pub fn new() -> Menu {
