@@ -62,6 +62,7 @@ const MENU: &[&MenuItem] = &[
         // values:       &[true, false], // TODO
         default:      1,
     },
+    // TODO remove this option if console does not support colors
     &MenuItem {
         description:  "Color Scheme",
         value_labels: &["Red/Black", "White/Red", "White/Black"],
@@ -82,7 +83,7 @@ pub struct Menu {
 }
 impl Menu {
     pub fn new() -> Menu {
-        Menu {
+        let mut result = Menu {
             cursor: 0, // TODO any way to use iterators here?
             selections: [ // TODO *barf*
                 MENU[0].default,
@@ -90,7 +91,13 @@ impl Menu {
                 MENU[2].default,
                 MENU[3].default,
             ]
+        };
+        if !console::Term::stdout().features().wants_emoji() {
+            // TODO check this inline when declaring MENU (have to move MENU init in here)
+            result.selections[3] = 1;
         }
+
+        result
     }
 
     pub fn draw(&self, window: &mut pancurses::Window) {
